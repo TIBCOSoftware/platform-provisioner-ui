@@ -1,0 +1,47 @@
+{
+    "k8s": {
+        "namespace": "tekton-tasks"
+    },
+    "configmap": {
+        "yamlConfigFolderPath": "/workspace/data/",
+        "tenantList": "/workspace/data/tenantList.yaml",
+        "templates": "/workspace/data/templates.yaml",
+        "menuContent": "/workspace/data/menuContent.yaml",
+        "mockUser": "/workspace/data/mockUser.yaml",
+        "pipelinesTemplates": "/workspace/data/pipelinesTemplates.yaml",
+        "sso": "/workspace/data/sso.yaml",
+        "md": {
+          "connectDetailsPage": "/workspace/data/connectDetailsPage.md",
+          "errorPage": "/workspace/data/errorPage.md",
+          "prepareDetailsPage": "/workspace/data/prepareDetailsPage.md"
+        }
+    },
+    "web": {
+        "host": "0.0.0.0",
+        "port": 80,
+        "devPort": 81
+    },
+    "clusterOptions": {
+        "clusters": [{
+            "name": "inCluster",
+            "caFile": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+            "server": "https://kubernetes.default.svc",
+            "skipTLSVerify": false
+        }],
+        "users": [{
+            "name": "inClusterUser",
+            "authProvider": {
+                "name": "tokenFile",
+                "config": {
+                    "tokenFile": "/var/run/secrets/kubernetes.io/serviceaccount/token"
+                }
+            }
+        }],
+        "contexts": [{
+            "cluster": "inCluster",
+            "name": "inClusterContext",
+            "user": "inClusterUser"
+        }],
+        "currentContext": "inClusterContext"
+    }
+}

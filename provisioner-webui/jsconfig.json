@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "types": [
+      "lodash",
+      "vue3-toastify/global",
+      "./src/types/pipeline.d.ts",
+      "./src/types/response.d.ts",
+      "./src/types/types.d.ts"
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

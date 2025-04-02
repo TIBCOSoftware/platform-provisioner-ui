@@ -1,0 +1,58 @@
+pipelineName: "Helm install"
+description: "Helm install description"
+options:
+  - name: "helmCharts name"
+    type: string
+    guiType: input
+    reference: "helmCharts[0].name"
+  - name: "PreDeploy content"
+    type: string
+    guiType: textarea
+    lang: sh
+    reference: "helmCharts[0].hooks.preDeploy.content"
+    required: true
+    description: "Script content"
+  - name: "Keep previous"
+    type: boolean
+    guiType: checkbox
+    reference: "helmCharts[0].values.keepPrevious"
+    description: "Keep previous"
+  - name: "Flag timeout"
+    type: string
+    guiType: dropdown
+    required: true
+    labels:
+      - "30 minutes"
+      - "1 hours"
+      - "2 hours"
+      - "4 hours"
+      - "6 hours"
+    values:
+      - "30m"
+      - "1h"
+      - "2h"
+      - "4h"
+      - "6h"
+    reference: "helmCharts[0].flags.timeout"
+    description: "flags timeout description"
+  - name: "GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    description: "The version of CP platform bootstrap. TP 1.2 GA release version is: 1.2.23. use ^1.0.0 for latest"
+  - name: "GUI_CP_PLATFORM_BASE_VERSION"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_PLATFORM_BASE_VERSION"
+    description: "The version of CP platform base. TP 1.2 GA release version is: 1.2.140. use ^1.0.0 for latest"
+  - name: "GUI_CP_INGRESS_CLASSNAME"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_INGRESS_CLASSNAME"
+    description: "The ingress class name for CP."
+  - name: "GUI_CP_CONTAINER_REGISTRY"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_CONTAINER_REGISTRY"
+    description: |
+      For Azure use jFrog registry. `csgprduswrepoedge.jfrog.io`. For ECR use `664529841144.dkr.ecr.us-west-2.amazonaws.com`

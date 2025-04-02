@@ -1,0 +1,576 @@
+pipelineName: "Deploy TIBCO Control Plane on Platform Cluster"
+description: |
+  This pipeline will deploy GA version of Control Plane by default on Platform cluster. The same recipe should work for all kubernetes cluster.
+  The main ingress will become the only ingress for the CP. We will NOT create a separate NLB for hybrid-proxy.   
+  The pipeline will deploy the following components:
+  * platform-bootstrap
+  * platform-base
+groups:
+  - title: "Chart Repository"
+    index: 1
+    description: |
+      ### This is a description, support for markdown
+      * platform-bootstrap
+      * platform-base
+  - title: "Container Registry"
+    index: 2
+    description: |
+      Container registry specific configurations.
+  - title: "Cloud Provider"
+    index: 3
+    description: |
+      Cloud provider specific configurations.
+  - title: "Cluster Configuration"
+    index: 4
+    description: |
+      Cluster specific configurations.
+  - title: "CP Configuration"
+    index: 5
+    description: |
+      Cluster specific configurations.
+  - title: "CP ingress"
+    index: 6
+    description: |
+      CP ingress specific configurations.
+  - title: "CP storage"
+    index: 7
+    description: |
+      CP storage specific configurations.
+  - title: "CP Database"
+    index: 8
+    description: |
+      CP DB specific configurations.
+  - title: "CP E-mail"
+    index: 9
+    description: |
+      CP E-mail specific configurations.
+  - title: "Flow control"
+    index: 10
+    description: |
+      Change the installation flow control options.
+options:
+  # groupIndex: 1 Chart Repository
+  - name: "GUI_CP_CHART_REPO"
+    groupIndex: 1
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CHART_REPO"
+    description: "The CP chart repository. (optional)"
+  - name: "GUI_CP_CHART_REPO_USER_NAME"
+    groupIndex: 1
+    type: password
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CHART_REPO_USER_NAME"
+    description: "The CP chart repository user name. (optional)"
+  - name: "GUI_CP_CHART_REPO_TOKEN"
+    groupIndex: 1
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CHART_REPO_TOKEN"
+    description: ""
+  - name: "GUI_DP_CHART_REPO"
+    groupIndex: 1
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_DP_CHART_REPO"
+    description: "The DP chart repository. (optional)"
+  - name: "GUI_DP_CHART_REPO_USER_NAME"
+    groupIndex: 1
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_DP_CHART_REPO_USER_NAME"
+    description: "The DP chart repository user name. (optional)"
+  - name: "GUI_DP_CHART_REPO_TOKEN"
+    groupIndex: 1
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_DP_CHART_REPO_TOKEN"
+    description: "The DP chart repository token. (optional)"
+
+  # groupIndex: 2 Container Registry
+  - name: "GUI_CP_CONTAINER_REGISTRY"
+    groupIndex: 2
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CONTAINER_REGISTRY"
+    description: |
+      The container registry to deploy CP. csgprdusw2reposaas.jfrog.io for master node. csgprduswrepoedge.jfrog.io for edge node. Master node has dev images. Edge node has prod images.
+  - name: "GUI_CP_CONTAINER_REGISTRY_REPOSITORY"
+    groupIndex: 2
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CONTAINER_REGISTRY_REPOSITORY"
+    description: |
+      The container registry repository to deploy CP. tibco-platform-docker-prod for production. tibco-platform-docker-dev for development
+  - name: "GUI_CP_CONTAINER_REGISTRY_USERNAME"
+    groupIndex: 2
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CONTAINER_REGISTRY_USERNAME"
+    description: |
+      For jFrog production the username is `tibco-platform-sub-<subid>`
+  - name: "GUI_CP_CONTAINER_REGISTRY_PASSWORD"
+    groupIndex: 2
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CONTAINER_REGISTRY_PASSWORD"
+    description: |
+      The container registry password to deploy CP
+
+  # groupIndex: 3 Cloud Provider
+  - name: "AZURE_RESOURCE_GROUP"
+    groupIndex: 3
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.AZURE_RESOURCE_GROUP"
+    description: "The Azure resource group. (optional)"
+  - name: "GCP_REGION"
+    groupIndex: 3
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GCP_REGION"
+    description: "The GKE region. (optional)"
+  - name: "GUI_CP_CROSSPLANE_ENABLED"
+    groupIndex: 3
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_CROSSPLANE_ENABLED"
+    description: "Enable crossplane for provisioning AWS RDS resource"
+
+  # groupIndex: 4 Cluster Configuration
+  - name: "GUI_CP_CLUSTER_NAME"
+    groupIndex: 4
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CLUSTER_NAME"
+    description: "The CP cluster name."
+    required: true
+  - name: "GUI_TP_CLUSTER_NODE_CIDR"
+    groupIndex: 4
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_TP_CLUSTER_NODE_CIDR"
+    description: "CP Cluster Node CIDR"
+  - name: "GUI_TP_CLUSTER_POD_CIDR"
+    groupIndex: 4
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_TP_CLUSTER_POD_CIDR"
+    description: "CP Cluster Pod CIDR"
+  - name: "GUI_CP_CREATE_NETWORK_POLICIES"
+    groupIndex: 4
+    type: boolean
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_CREATE_NETWORK_POLICIES"
+    description: |
+      Create network policies for CP. Default is false. Set to true to create network policies for CP.
+  - name: "GUI_CP_EXT_NAMESPACE"
+    groupIndex: 4
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_EXT_NAMESPACE"
+    description: "The CP third party tools namespace."
+
+  # groupIndex: 5 CP Configuration
+  - name: "GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    description: "The version of CP platform bootstrap. TP 1.2 GA release version is: 1.3.36. use ^1.0.0 for latest"
+  - name: "GUI_CP_PLATFORM_BASE_VERSION"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_PLATFORM_BASE_VERSION"
+    description: "The version of CP platform base. TP 1.2 GA release version is: 1.3.338. use ^1.0.0 for latest"
+  - name: "GUI_CP_INSTANCE_ID"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_INSTANCE_ID"
+    required: true
+    description: "The CP instance name."
+  - name: "GUI_CP_PROVIDER"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_PROVIDER"
+    description: |
+      CP deployment target. Example: aws, azure, local.
+  - name: "GUI_CP_NAMESPACE"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_NAMESPACE"
+    required: true
+  - name: "GUI_CP_ADMIN_EMAIL"
+    groupIndex: 5
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_ADMIN_EMAIL"
+    required: true
+
+  # groupIndex: 6 CP ingress
+  - name: "GUI_CP_DNS_DOMAIN"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DNS_DOMAIN"
+    required: true
+    description: |
+      This domain  contains sandbox subdomain, account sandbox and top level domain. eg: <sandbox subdomain for main ingress / CP/DP env>.<Account sandbox>.<Top level domain>
+      The sandbox subdomain ( CP/DP Env ) is the naming for your current cluster environment / sandobox subdomain for main ingress. We suggest to use your LDAP as the CP/DP env.
+      Eg. for Azure <sandbox_subdomain>.<account_sandbox>.azure.dataplanes.pro
+      Eg. for AWS <sandbox_subdomain>.<account_sandbox>.dataplanes.pro
+      Account sandbox list: <a href='https://confluence.tibco.com/pages/viewpage.action?pageId=190135472' target='_blank'>link</a>
+  - name: "GUI_TP_TLS_CERT"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_TP_TLS_CERT"
+    description: "The TLS certificate for CP"
+  - name: "GUI_TP_TLS_KEY"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_TP_TLS_KEY"
+    description: "The TLS key for CP"
+  - name: "GUI_CP_INGRESS_CLASSNAME"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_INGRESS_CLASSNAME"
+    description: "The ingress class name for CP."
+  - name: "GUI_TP_GENERATE_CERTIFICATES"
+    groupIndex: 6
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_TP_GENERATE_CERTIFICATES"
+    description: "Create network policies for CP"
+  - name: "GUI_TP_CERTIFICATE_CLUSTER_ISSUER"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_TP_CERTIFICATE_CLUSTER_ISSUER"
+    description: |
+      For AWS and GCP; the cluster issuer name is: tp-prod. For Azure; the cluster issuer name is: cic-cert-subscription-scope-production-main
+  - name: "GUI_CP_IDM_IDENTITY_MANAGEMENT_JWT_KEY_STORE_PASSWORD"
+    groupIndex: 6
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_IDM_IDENTITY_MANAGEMENT_JWT_KEY_STORE_PASSWORD"
+    description: "The IDM JWT key store password"
+
+  # groupIndex: 7 CP storage
+  - name: "GUI_CP_STORAGE_CLASS"
+    groupIndex: 7
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_STORAGE_CLASS"
+    required: true
+    description: |
+      The storage class name. For Azure use `azure-files-sc`. For AWS use `efs-sc`. For GCP use `standard-rwx-tp`
+  - name: "GUI_CP_STORAGE_PV_NAME"
+    groupIndex: 7
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_STORAGE_PV_NAME"
+    description: |
+      `control-plane-pv` the name of PV for kind, works with CP_STORAGE_CREATE_PV flag
+  - name: "GUI_CP_STORAGE_PV_SIZE"
+    groupIndex: 7
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_STORAGE_PV_SIZE"
+    required: true
+    description: |
+      The size of the PV. Example: 10Gi. For GKE use 1Ti
+
+  # groupIndex: 8 CP DB
+  - name: "GUI_CP_DB_HOST"
+    groupIndex: 8
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DB_HOST"
+    required: true
+    description: |
+      The DB host name. If you provisioner postgres pod; you can use "postgresql.tibco-ext.svc.cluster.local". If you create RDS; you need to use the RDS endpoint.
+  - name: "GUI_CP_DB_USER_NAME"
+    groupIndex: 8
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DB_USER_NAME"
+    required: true
+    description: |
+      The DB user name. If you provisioner postgres pod; you can use "postgres". If you create RDS; you need to use the RDS master user name.
+  - name: "GUI_CP_DB_PASSWORD"
+    groupIndex: 8
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DB_PASSWORD"
+    required: true
+    description: |
+      The DB password. If you provisioner postgres pod; you can use "postgres". If you create RDS; you need to use the RDS master password.
+  - name: "GUI_CP_DB_NAME"
+    groupIndex: 8
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DB_NAME"
+    description: |
+      The Database name
+  - name: "GUI_CP_DB_SECRET_NAME"
+    groupIndex: 8
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_DB_SECRET_NAME"
+    description: |
+      The secret name for DB credentials. The default value is provider-cp-database-credentials
+  - name: "GUI_CP_DB_SSL_MODE"
+    groupIndex: 8
+    type: string
+    labels:
+      - "disable"
+      - "verify-full"
+    values:
+      - "disable"
+      - "verify-full"
+    guiType: radio
+    reference: "meta.guiEnv.GUI_CP_DB_SSL_MODE"
+  - name: "GUI_CP_DB_DELETE_ON_UNINSTALL"
+    groupIndex: 8
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_DB_DELETE_ON_UNINSTALL"
+    description: "Delete the DB on uninstall"
+
+  # groupIndex: 9 CP email
+  - name: "GUI_CP_MAIL_SERVER_SES_ARN"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_SES_ARN"
+    description: |
+      The SES ARN for AWS deployment
+  - name: "GUI_CP_MAIL_SERVER_SENDGRID_API_KEY"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_SENDGRID_API_KEY"
+    description: |
+      The SendGrid API key for Azure deployment
+  - name: "GUI_CP_MAIL_SERVER_ADDRESS"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_ADDRESS"
+    description: |
+      For testing we install a mail server in the same cluster. The default address is development-mailserver.${GUI_CP_EXT_NAMESPACE}.svc.cluster.local
+  - name: "GUI_CP_MAIL_SERVER_PORT_NUMBER"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_PORT_NUMBER"
+    description: "The default port number is 1025"
+  - name: "GUI_CP_MAIL_SERVER_USERNAME"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_USERNAME"
+    description: ""
+  - name: "GUI_CP_MAIL_SERVER_PASSWORD"
+    groupIndex: 9
+    type: string
+    guiType: input
+    reference: "meta.guiEnv.GUI_CP_MAIL_SERVER_PASSWORD"
+    description: ""
+
+  # groupIndex: 10 Flow control
+  - name: "GUI_CP_CREATE_NAMESPACE"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_CREATE_NAMESPACE"
+    description: "Create the CP namespace"
+  - name: "GUI_CP_INSTALL_MAILDEV"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_MAILDEV"
+    description: "Install maildev for testing email"
+  - name: "GUI_CP_INSTALL_MAILDEV_INGRESS"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_MAILDEV_INGRESS"
+    description: "Install maildev ingress for testing email"
+  - name: "GUI_CP_INSTALL_PLATFORM_BOOTSTRAP"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_PLATFORM_BOOTSTRAP"
+    description: "Install platform-bootstrap"
+  - name: "GUI_CP_INSTALL_PLATFORM_BASE"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_PLATFORM_BASE"
+    description: "Install platform-base"
+  - name: "GUI_CP_INSTALL_TIBCOHUB_CONTRIB"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_TIBCOHUB_CONTRIB"
+    description: ""
+  - name: "GUI_CP_INSTALL_MSG_CONTRIB"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_MSG_CONTRIB"
+    description: ""
+  - name: "GUI_CP_INSTALL_HAWK"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_HAWK"
+    description: ""
+  - name: "GUI_CP_INSTALL_RECIPES"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_RECIPES"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION_BWCE"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION_BWCE"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION_BWCE_UTILITIES"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION_BWCE_UTILITIES"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION_BW5"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION_BW5"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION_FLOGO"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION_FLOGO"
+    description: ""
+  - name: "GUI_CP_INSTALL_INTEGRATION_FLOGO_UTILITIES"
+    groupIndex: 10
+    type: boolean
+    guiType: checkbox
+    reference: "meta.guiEnv.GUI_CP_INSTALL_INTEGRATION_FLOGO_UTILITIES"
+    description: ""
+recipe: |
+  apiVersion: v1
+  kind: helm-install
+  meta:
+    guiEnv:
+      note: "deploy-cp-tp-cluster"
+      # github
+      GUI_GITHUB_TOKEN: ${GUI_GITHUB_TOKEN:-$(cat /tmp/secret-github/GITHUB_TOKEN)} # Provisioner SaaS pipeline provided github token
+      GUI_CP_CHART_REPO: https://${GUI_GITHUB_TOKEN}@raw.githubusercontent.com/tibco/tp-helm-charts/gh-pages # TIBCO internal repo
+      GUI_CP_CHART_REPO_USER_NAME: "cp-test"
+      GUI_CP_CHART_REPO_TOKEN: ${GUI_GITHUB_TOKEN}
+      GUI_DP_CHART_REPO: https://${GUI_GITHUB_TOKEN}@raw.githubusercontent.com/tibco/tp-helm-charts/gh-pages # TIBCO internal repo
+      GUI_DP_CHART_REPO_USER_NAME: "cp-test"
+      GUI_DP_CHART_REPO_TOKEN: ${GUI_GITHUB_TOKEN} # Remove when using public repo for GUI_DP_CHART_REPO
+
+      # image registry
+      GUI_CP_CONTAINER_REGISTRY: csgprdusw2reposaas.jfrog.io # csgprduswrepoedge.jfrog.io for edge node
+      GUI_CP_CONTAINER_REGISTRY_REPOSITORY: tibco-platform-docker-dev
+      GUI_CP_CONTAINER_REGISTRY_USERNAME: "tibco-platform-devops-read"
+      GUI_CP_CONTAINER_REGISTRY_PASSWORD: "${GUI_CP_CONTAINER_REGISTRY_PASSWORD:-$(cat /tmp/secret-github/JFROG_DEV_TOKEN)}"
+
+      # cloud provider
+      AZURE_RESOURCE_GROUP: ""
+      GCP_REGION: us-west1
+
+      # cluster
+      GUI_CP_CLUSTER_NAME: ""
+      GUI_CP_EXT_NAMESPACE: "tibco-ext"
+      GUI_TP_CLUSTER_NODE_CIDR: "10.180.0.0/16"
+      GUI_TP_CLUSTER_POD_CIDR: "10.180.0.0/16"
+      GUI_CP_CREATE_NETWORK_POLICIES: false
+  
+      # version
+      GUI_CP_PLATFORM_BOOTSTRAP_VERSION: 1.3.36
+      GUI_CP_PLATFORM_BASE_VERSION: 1.3.338
+      # CP env
+      GUI_CP_INSTANCE_ID: "cp1"
+      GUI_CP_PROVIDER: "local"
+      GUI_CP_NAMESPACE: "cp1-ns"
+      GUI_CP_ADMIN_EMAIL: "cp-test@tibco.com"
+
+      # ingress
+      GUI_CP_DNS_DOMAIN: ""
+      GUI_TP_TLS_CERT: ""
+      GUI_TP_TLS_KEY: ""
+      GUI_CP_INGRESS_CLASSNAME: "nginx"
+      GUI_TP_GENERATE_CERTIFICATES: true
+      GUI_TP_CERTIFICATE_CLUSTER_ISSUER: tp-prod # for Azure use: cic-cert-subscription-scope-production-nginx
+      # SSO
+      GUI_CP_IDM_IDENTITY_MANAGEMENT_JWT_KEY_STORE_PASSWORD: "easy-to-remember"
+
+      # storage
+      GUI_CP_STORAGE_CLASS: "efs-sc" # azure-files-sc for Azure
+      GUI_CP_STORAGE_CREATE_PV: false
+      GUI_CP_STORAGE_PV_NAME: ""
+      GUI_CP_STORAGE_PV_SIZE: "10Gi"
+  
+      # email
+      GUI_CP_MAIL_SERVER_SES_ARN: ""
+      GUI_CP_MAIL_SERVER_SENDGRID_API_KEY: ""
+      GUI_CP_MAIL_SERVER_ADDRESS: ""
+      GUI_CP_MAIL_SERVER_PORT_NUMBER: ""
+      GUI_CP_MAIL_SERVER_USERNAME: ""
+      GUI_CP_MAIL_SERVER_PASSWORD: ""
+  
+      # DB the default value is for postgres pod
+      GUI_CP_DB_HOST: "postgresql.tibco-ext.svc.cluster.local"
+      GUI_CP_DB_USER_NAME: "postgres"
+      GUI_CP_DB_PASSWORD: "postgres"
+      GUI_CP_DB_NAME: "postgres"
+      GUI_CP_DB_SECRET_NAME: "provider-cp-database-credentials"
+      GUI_CP_DB_SSL_MODE: "disable" # verify-full, disable
+      GUI_CP_DB_SSL_ROOT_CERT: ""
+      GUI_CP_DB_DELETE_ON_UNINSTALL: false
+  
+      # flow control
+      GUI_CP_CREATE_NAMESPACE: true
+      GUI_CP_CROSSPLANE_ENABLED: false
+      GUI_CP_INSTALL_MAILDEV: true
+      GUI_CP_INSTALL_MAILDEV_INGRESS: false
+      GUI_CP_INSTALL_PLATFORM_BOOTSTRAP: true
+      GUI_CP_INSTALL_PLATFORM_BASE: true
+  
+      GUI_CP_INSTALL_TIBCOHUB_CONTRIB: true
+      GUI_CP_INSTALL_MSG_CONTRIB: true
+      GUI_CP_INSTALL_HAWK: true
+      GUI_CP_INSTALL_RECIPES: true
+      GUI_CP_INSTALL_INTEGRATION: true
+      GUI_CP_INSTALL_INTEGRATION_BWCE: true
+      GUI_CP_INSTALL_INTEGRATION_BWCE_UTILITIES: true
+      GUI_CP_INSTALL_INTEGRATION_BW5: true
+      GUI_CP_INSTALL_INTEGRATION_FLOGO: true
+      GUI_CP_INSTALL_INTEGRATION_FLOGO_UTILITIES: true
+    git:
+      github:
+        repo: github.com/tibco/platform-provisioner
+        path: docs/recipes/controlplane/tp-cp.yaml
+        branch: main

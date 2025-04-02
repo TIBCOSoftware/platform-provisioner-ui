@@ -1,0 +1,77 @@
+.pv-status-view,
+.pv-doc-view,
+.pv-pipeline-view,
+.pv-error-view {
+  margin: 56px 40px 0;
+  h2 {
+    font-size: 1.125rem;
+    margin: 0;
+    padding: 15px 0;
+  }
+}
+.pv-field-horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  padding: 10px;
+  &:hover {
+    background: #f5f5f5;
+  }
+  .label-title {
+    width: 230px;
+    margin-right: 10px;
+    font-weight: 500;
+  }
+  .pipeline-field-account, .pipeline-field-region {
+    flex-direction: column;
+    display: flex;
+  }
+  .pipeline-field {
+    flex: 1;
+    input, select {
+      font-size: 0.75rem;
+    }
+  }
+}
+.pv-error {
+  // see the colors in bootstrap css v5.3.0: https://getbootstrap.com/docs/5.3/customize/color/
+  color: var(--bs-danger);
+}
+
+.force-break {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+// override the PrimeVue's primary color
+:root {
+  --bs-body-font-size: 0.875rem !important;
+  --p-primary-color: #42a5f5 !important;
+  --p-primary-hover-color: #42a5f5 !important;
+  --p-primary-active-color: #42a5f5 !important;
+
+  --p-button-padding-x: 0.45rem !important;
+  --p-button-padding-y: 0.325rem !important;
+  .p-button {
+    font-size: var(--bs-body-font-size);
+  }
+  --yaml-editor-width: 700px;
+}
+.p-drawer {
+  width: 50% !important;
+  min-width: 720px;
+}
+.modal-mask-with-yaml {
+  width: calc(100vw - var(--yaml-editor-width) - 30px) !important;
+  .p-drawer {
+    width: 80% !important;
+  }
+}
+
+.markdown-body {
+  h2 {
+    font-size: 1.125rem !important;
+  }
+}
+// override the PrimeVue's primary color

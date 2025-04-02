@@ -1,0 +1,34 @@
+.DS_Store
+node_modules
+dist
+
+/tests/e2e/reports/
+selenium-debug.log
+chromedriver.log
+geckodriver.log
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+launcher
+wrapper.sh
+
+*.pem
+provisioner-webui/dist
+provisioner-webui/node_modules
+/platform-provisioner-ui.iml

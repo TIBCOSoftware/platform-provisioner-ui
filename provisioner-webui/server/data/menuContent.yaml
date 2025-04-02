@@ -1,0 +1,66 @@
+#
+# Copyright © 2024. Cloud Software Group, Inc.
+# This file is subject to the license terms contained
+# in the license file that is distributed with this file.
+#
+
+aws:
+  region:
+    values:
+      - 'ap-south-1'
+      - 'ap-southeast-2'
+      - 'eu-central-1'
+      - 'eu-west-1'
+      - 'us-east-1'
+      - 'us-east-2'
+      - 'us-west-2'
+    defaultValue: 'us-west-2'
+menuConfig:
+  - label: "Pipelines"
+    icon: 'pi pi-list'
+    items:
+      - label: "Pipelines"
+        url: "/pipelines"
+        icon: 'pi pi-cog'
+      - label: "Generic runner from API"
+        url: "/pipelines/generic-runner"
+        config: pp-generic-runner.yaml
+        icon: 'pi pi-cog'
+      - label: "Helm install"
+        url: "/pipelines/helm-install"
+        config: pp-helm-install.yaml
+        icon: 'pi pi-cog'
+      - label: "Generic runner new title"
+        url: "/pipelines/generic-runner?title=Generic runner new title"
+        config: pp-test-generic-runner.yaml
+        icon: 'pi pi-cog'
+      - label: "Deploy TIBCO Control Plane on Platform Cluster"
+        url: "/pipelines/generic-runner?title=deploy-cp-tp-cluster"
+        config: pp-deploy-cp-tp-cluster.yaml
+        icon: 'bi bi-airplane'
+      - label: "Test Pipeline Customization"
+        url: "/pipelines/generic-runner?title=testing"
+        config: pp-testing.yaml
+        icon: 'pi pi-cog'
+      - separator: true
+      - label: "Generic runner sub menu"
+        config: pp-test-generic-runner.yaml
+        icon: 'pi pi-cog'
+        items:
+          - label: "Tibco Cloud Accounts"
+            url: "https://confluence.tibco.com/pages/viewpage.action?pageId=190135472"
+            icon: 'pi pi-external-link'
+  - label: "Status"
+    url: "/status"
+    icon: 'pi pi-cog' # see the list in https://primevue.org/icons/#list
+  - label: "Docs"
+    icon: 'pi pi-book'
+    items:
+      - label: "Connect K8S"
+        url: "/docs/connectDetailsPage"
+        icon: 'pi pi-link'
+      - label: "Provisioner UI Docs"
+        url: "https://github.com/tibco/platform-provisioner-ui/tree/main/provisioner-webui/docs"  # External link to navigate when item is clicked.
+        target: "_blank"        # Opens the link in a new tab.
+        icon: 'pi pi-external-link'
+

@@ -1,0 +1,107 @@
+pipelineName: "Generic runner new title"
+description: "(New) Tekton Pipelines is an open source project that you can use to configure and run continuous integration and continuous deployment pipelines within a Kubernetes cluster. Tekton pipelines are defined in yaml files, which are typically stored in a Git repository (repo)."
+groups:
+  - title: "Chart Repository"
+    index: "A"
+  - title: "Container Registry"
+    index: "B"
+options:
+  - name: "PIPELINE_LOG_DEBUG"
+    groupIndex: "A"
+    type: boolean
+    guiType: checkbox
+    reference: "meta.globalEnvVariable.PIPELINE_LOG_DEBUG"
+    description: "Enable debug logging"
+  - name: "DP container registry password"
+    type: password
+    groupIndex: "A"
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_GITHUB_USER_NAME"
+    required: true
+    description: "The container registry password"
+  - name: "Task content"
+    groupIndex: "B"
+    type: string
+    guiType: textarea
+    lang: sh
+    reference: "tasks[0].script.content"
+    required: true
+    description: "Script content"
+  - name: "GUI_CP_DNS_DOMAIN"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_DNS_DOMAIN"
+    required: true
+    description: |
+      This domain  contains sandbox subdomain, account sandbox and top level domain. eg: <sandbox subdomain for main ingress / CP/DP env>.<Account sandbox>.<Top level domain>
+      The sandbox subdomain ( CP/DP Env ) is the naming for your current cluster environment / sandobox subdomain for main ingress. We suggest to use your LDAP as the CP/DP env.
+      Eg. for Azure <sandbox_subdomain>.<account_sandbox>.azure.dataplanes.pro
+      Eg. for AWS <sandbox_subdomain>.<account_sandbox>.dataplanes.pro
+      Account sandbox list: <a href='https://confluence.tibco.com/pages/viewpage.action?pageId=190135472' target='_blank'>link</a>
+  - name: "GUI_CP_ADMIN_EMAIL"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_ADMIN_EMAIL"
+    required: true
+  - name: "GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    type: password
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_PLATFORM_BOOTSTRAP_VERSION"
+    description: "The version of CP platform bootstrap. TP 1.2 GA release version is: 1.2.23. use ^1.0.0 for latest"
+  - name: "GUI_CP_PLATFORM_BASE_VERSION"
+    type: number
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_PLATFORM_BASE_VERSION"
+    description: "The version of CP platform base. TP 1.2 GA release version is: 1.2.140. use ^1.0.0 for latest"
+  - name: "GUI_CP_INGRESS_CLASSNAME"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_INGRESS_CLASSNAME"
+    description: "The ingress class name for CP."
+  - name: "GUI_CP_CONTAINER_REGISTRY"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_CONTAINER_REGISTRY"
+    description: |
+      For Azure use jFrog registry. `csgprduswrepoedge.jfrog.io`. For ECR use `664529841144.dkr.ecr.us-west-2.amazonaws.com`
+  - name: "GUI_CP_CONTAINER_REGISTRY_USERNAME"
+    type: string
+    guiType: input
+    reference: "meta.globalEnvVariable.GUI_CP_CONTAINER_REGISTRY_USERNAME"
+    description: |
+      For ECR the username is `AWS`. For jFrog the username is `tibco-platform-sub-<subid>`
+recipe: |
+  apiVersion: v1
+  kind: generic-runner
+  meta:
+    globalEnvVariable:
+      REPLACE_RECIPE: true
+      PIPELINE_LOG_DEBUG: false
+      PIPELINE_CHECK_DOCKER_STATUS: false
+      PIPELINE_INITIAL_ASSUME_ROLE: false
+      GUI_CP_DNS_DOMAIN: ""
+      GUI_CP_ADMIN_EMAIL: "cp-test@tibco.com"
+      # the github username for private cp chart repo
+      GUI_GITHUB_USER_NAME: "cp-test"
+      # image registry
+      GUI_CP_CONTAINER_REGISTRY: 664529841144.dkr.ecr.us-west-2.amazonaws.com
+      GUI_CP_CONTAINER_REGISTRY_USERNAME: ""
+  tasks:
+    - condition: true
+      script:
+        ignoreErrors: false
+        fileName: script.sh
+        content: |
+          total_time=60*2
+          interval=5
+          count=1
+  
+          iterations=$((total_time / interval))
+  
+          while [ $count -le $iterations ]
+          do
+              echo "A $count"
+              sleep $interval
+              count=$((count + 1))
+          done
+

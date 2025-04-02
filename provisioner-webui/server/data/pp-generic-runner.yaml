@@ -1,0 +1,16 @@
+pipelineName: "Generic Runner From API"
+description: "Tekton Pipelines is an open source project that you can use to configure and run continuous integration and continuous deployment pipelines within a Kubernetes cluster. Tekton pipelines are defined in yaml files, which are typically stored in a Git repository (repo)."
+options:
+  - name: "PIPELINE_LOG_DEBUG"
+    type: boolean
+    guiType: checkbox
+    reference: "meta.globalEnvVariable.PIPELINE_LOG_DEBUG"
+    description: "Enable debug logging"
+  - name: "Task content"
+    type: string
+    guiType: textarea
+    lang: sh
+    reference: "tasks[0].script.content"
+    required: true
+    description: "Script content"
+

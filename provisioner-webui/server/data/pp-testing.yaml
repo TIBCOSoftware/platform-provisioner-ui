@@ -1,0 +1,281 @@
+pipelineName: "Test Pipeline Customization"
+description: |
+  ### Markdown
+  
+  * Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.
+  * Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.
+  * [vue3-markdown](https://www.npmjs.com/package/vue3-markdown), [Live demo](https://vue-md.netlify.app/)
+options:
+  - name: "Installation Owner"
+    type: string
+    required: true
+    description: "This is a description. <a href='https://www.cloud.com' target='_blank'>Cloud</a>"
+    guiType: input
+    reference: "meta.installationOwner"
+  - name: "clusters[0].nodeGroups[0].initialCount"
+    type: number
+    required: true
+    description: "The initial count of the default node group"
+    guiType: input
+    reference: "clusters[0].nodeGroups[0].initialCount"
+  - name: "Networking vpcs identifier"
+    type: string
+    guiType: input
+    reference: "networking.vpcs[1].identifier"
+  - name: "Is connect cic1"
+    type: boolean
+    required: true
+    description: "Is connect cic1"
+    guiType: checkbox
+    reference: "installation.tibco.connectCic2"
+    disableOtherFieldsWhenSet: ["meta.fileContent", "networking.vpcs[1].cidrs"]
+  - name: "Multiselect"
+    required: true
+    labels:
+      - "10.195.0.0/16"
+      - "10.195.0.0/17"
+      - "10.195.0.0/18"
+      - "10.195.0.0/19"
+      - "10.195.0.0/20"
+      - "10.195.0.0/21"
+    values:
+      - "10.195.0.0/16"
+      - "10.195.0.0/17"
+      - "10.195.0.0/18"
+      - "10.195.0.0/19"
+      - "10.195.0.0/20"
+      - "10.195.0.0/21"
+    type: array
+    description: "The cidrs"
+    guiType: multiselect
+    reference: "networking.vpcs[1].cidrs"
+  - name: "Deployment Action"
+    type: string
+    required: true
+    description: "The deployment action"
+    guiType: radio
+    labels:
+      - "Install"
+      - "Upgrade"
+      - "Uninstall"
+      - "Delete"
+      - "Add"
+      - "Update"
+    values:
+      - "install"
+      - "upgrade"
+      - "uninstall"
+      - "delete"
+      - "add"
+      - "update"
+    reference: "meta.deploymentAction"
+  - name: "Deployment Action Dropdown"
+    type: string
+    guiType: dropdown
+    required: true
+    labels:
+      - "Install"
+      - "Upgrade"
+      - "Uninstall"
+      - "Delete"
+      - "Add"
+      - "Update"
+    values:
+      - "install"
+      - "upgrade"
+      - "uninstall"
+      - "delete"
+      - "add"
+      - "update"
+    reference: "meta.deploymentAction"
+    description: "The deployment action dropdown list"
+  - name: "File upload"
+    type: string
+    guiType: file
+    required: true
+    description: "Select file to upload"
+    accept: ".zip,.tar,.gz"
+    fileSize: 100
+    reference: "meta.fileContent"
+  - name: "Description"
+    type: string
+    required: true
+    description: "The description"
+    guiType: textarea
+    reference: "helmCharts[0].values.content"
+recipe: |
+  version: 2.0.0
+  meta:
+    installationOwner: Jane John Doe
+    deploymentArtifactRepo: cic2-aws-deployer
+    deploymentArtifactVersion: aws-dev
+    deploymentAction: delete
+    fileContent: ""
+  installation:
+    name: cic20
+    dns:
+      sandboxSubdomain: compute-dev
+    tibco:
+      environment: Development
+      connectCic1: false
+      connectCic2: true
+  networking:
+    vpcs:
+      - identifier: legacy
+      - identifier: '01'
+        cidrs:
+          - 10.195.0.0/18
+  clusters:
+    - identifier: prd
+      vpc:
+        identifier: legacy
+      version: '1.20'
+      nodeGroups:
+        - identifier: default
+          initialCount: 4
+          vm:
+            instanceType: r5ad.large
+            lifecycle: OnDemand
+        - identifier: app
+          initialCount: 0
+          vm:
+            instanceType: r5ad.large
+            lifecycle: OnDemand
+        - identifier: windows
+          initialCount: 0
+          vm:
+            instanceType: r5a.2xlarge
+            lifecycle: OnDemand
+            rootVolume:
+              size: 500
+        - identifier: generic-xxlvcpu
+          initialCount: 0
+          vm:
+            instanceType: c5ad.4xlarge
+            lifecycle: OnDemand
+            rootVolume:
+              size: 100
+        - identifier: app-xxlvcpu
+          initialCount: 0
+          vm:
+            instanceType: c5ad.4xlarge
+            lifecycle: OnDemand
+            rootVolume:
+              size: 100
+        - identifier: windows-xxlvcpu
+          initialCount: 0
+          vm:
+            instanceType: c5a.4xlarge
+            lifecycle: OnDemand
+            rootVolume:
+              size: 500
+        - identifier: provisioner
+          initialCount: 1
+          vm:
+            instanceType: t3a.small
+            lifecycle: OnDemand
+    - identifier: p01
+      vpc:
+        identifier: '01'
+        cidr: 10.195.0.0/16
+      version: '1.21'
+      nodeGroups:
+        - identifier: default
+          initialCount: 4
+          minimumCount: 1
+          maximumCount: 12
+          vm:
+            instanceType: m5ad.large
+            lifecycle: OnDemand
+        - identifier: provisioner
+          initialCount: 1
+  helmChartsCommon:
+    cluster:
+      defaultWho: aws-dev
+  helmCharts:
+    - name: cic-global-bootstrap
+      namespace: tibco-system
+      weight: 500
+      cluster:
+        identifiers:
+          - prd
+          - p01
+      values:
+        base64Encoded: false
+        content: |
+          core:
+            cic-gatekeeper:
+              enabled: false
+    - name: cic-global
+      namespace: tibco-system
+      weight: 490
+      cluster:
+        identifiers:
+          - prd
+          - p01
+      dependsOn:
+        - name: cic-global-bootstrap
+      values:
+        content: |
+          core:
+            cic-gatekeeper-policies:
+              enabled: false
+      extraSettings:
+        - name: IgnoreCRDErrors
+          value: 'true'
+    - name: cic-global-configuration
+      namespace: tibco-system
+      weight: 485
+      cluster:
+        identifiers:
+          - prd
+          - p01
+      dependsOn:
+        - name: cic-global
+    - name: cic-global-monitoring
+      namespace: tibco-system
+      weight: 480
+      cluster:
+        identifiers:
+          - prd
+          - p01
+      dependsOn:
+        - name: cic-global-configuration
+    - name: cic-tenant-infrastructure-onboarding
+      namespace: tibco-system
+      weight: 475
+      cluster:
+        identifiers:
+          - prd
+          - p01
+        who: aws-dev
+      dependsOn:
+        - name: cic-global-configuration
+    - name: cic-tenant-infrastructure
+      namespace: tibco-system
+      weight: 470
+      cluster:
+        identifiers:
+          - prd
+          - p01
+        who: aws-dev
+      debug: true
+    - name: cic-tenant-tsc-onboarding
+      namespace: tibco-system
+      weight: 462
+      cluster:
+        identifiers:
+          - prd
+          - p01
+        who: aws-dev
+      dependsOn:
+        - name: cic-tenant-infrastructure
+          who: aws-dev
+    - name: cic-tenant-cdash-onboarding
+      namespace: tibco-system
+      weight: 461
+      cluster:
+        identifiers:
+          - prd
+          - p01
+        who: aws-dev
