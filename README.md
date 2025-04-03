@@ -15,7 +15,7 @@ The Platform Provisioner UI is designed the best fit for the following use cases
 
 ## Getting Started
 
-The platform provisioner UI needs to work with the [Platform Provisioner](https://github.com/TIBCOSoftware/platform-provisioner) runs in kubernetes cluster.
+The platform provisioner UI needs to work with the [Platform Provisioner](https://github.com/TIBCOSoftware/platform-provisioner) and runs in kubernetes cluster.
 
 ### Prerequisite
 * Running kubernetes cluster (Docker Desktop in following sample)
