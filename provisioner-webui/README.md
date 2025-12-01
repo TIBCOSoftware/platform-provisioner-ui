@@ -1,9 +1,14 @@
 # Running from source
 
 ## Prerequisite
-
+* Use node version 22.14.0
+```bash
+nvm install v22.14.0
+nvm alias default v22.14.0
+```
 * Running kubernetes cluster (Docker Desktop in following sample)
 * Install the tekton and pipelines in the kubernetes cluster
+* For UI error `No pipelines found.` in local side, also need to run below command.
 ```bash
 export PIPELINE_SKIP_PROVISIONER_UI=true
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/TIBCOSoftware/platform-provisioner/main/dev/platform-provisioner-install.sh)"
@@ -36,7 +41,6 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
    Clone platform provisioner repo: https://github.com/tibco/platform-provisioner 
    ```shell
    export TEKTON_API_VERSION=v1        # for v1, v0.58.0 latest
-   export START_FROM_SOURCE=true
    export PIPELINE_TEMPLATE_LABEL_KEY_ACCOUNT="env.cloud.tibco.com/account"
    export PIPELINE_TEMPLATE_LABEL_KEY_ACTION="env.cloud.tibco.com/action"
    export PIPELINE_TEMPLATE_LABEL_KEY_CONFIG="env.cloud.tibco.com/config"
@@ -60,6 +64,7 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 ### Hot reload for local development (Local dev steps)
 1. start the vue hot reload server, then build UI code in dev mode and start local project server
    ```shell
+   # make sure node version is 22.14.0
    export TEKTON_API_VERSION=v1        # for v1, v0.58.0 latest
    
    npm run build:client:dev   # build UI client code in development mode

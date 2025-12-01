@@ -7,6 +7,7 @@
 import { defineStore } from "pinia";
 import type { PIPELINE, PIPELINE_DEPLOY_PARAMS_AWS, PIPELINE_OPTION } from "@/types/pipeline";
 import type { YAML_EDITOR_CONTENT } from "@/types/props";
+import { resetObjectAndAssign } from "@/utils";
 
 export const useMainStore = defineStore("main", {
   state: () => ({
@@ -19,6 +20,8 @@ export const useMainStore = defineStore("main", {
       pipeline: ""
     } as PIPELINE_DEPLOY_PARAMS_AWS,
     selectedPipeline: {} as PIPELINE,
+    originalRecipeContent: {} as any,
+    originalOptionsContent: {} as any,
     yamlEditorContent: {} as any
   }),
   actions: {
@@ -47,6 +50,12 @@ export const useMainStore = defineStore("main", {
     },
     setSelectedPipeline(pipeline: PIPELINE) {
       this.selectedPipeline = { ...pipeline };
+    },
+    setOriginalRecipeContent(content: YAML_EDITOR_CONTENT) {
+      resetObjectAndAssign(this.originalRecipeContent, content);
+    },
+    setOriginalOptionsContent(content: YAML_EDITOR_CONTENT) {
+      resetObjectAndAssign(this.originalOptionsContent, content);
     },
     setYamlEditorContent(content: YAML_EDITOR_CONTENT) {
       // delete all keys in yamlEditorContent, then assign new content to it.

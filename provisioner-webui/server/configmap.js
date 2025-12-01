@@ -27,6 +27,12 @@ let dataPath = process.env.PIPELINE_MENU_CONFIG || path.resolve(__dirname, `data
 if (path.isAbsolute(dataPath) === false) {
   dataPath = path.resolve(__dirname, "../..", dataPath);
 }
+// download folder path for any temporary downloaded files
+let downloadFolderPath = "/tmp";
+// if it is windows, use %TEMP% environment variable
+if (process.platform === "win32") {
+  downloadFolderPath = process.env.TEMP || "C:\\Temp";
+}
 
 exports.init = function() {
   if (isFromSource) {
@@ -58,7 +64,22 @@ const readYaml = function(yamlFile) {
   return null;
 };
 
-exports.readYaml = function(yamlFileName) {
+exports.dataFolderPath = dataPath;
+exports.downloadFolderPath = downloadFolderPath;
+
+exports.loadYamlContent = function(yamlFileContent) {
+  try {
+    return yaml.load(yamlFileContent);
+  } catch (e) {
+    console.error("Error reading YAML file content, error: " + e.message);
+  }
+  return null;
+};
+
+exports.readYaml = function(yamlFileName, isFullPath = false) {
+  if (isFullPath) {
+    return readYaml(yamlFileName);
+  }
   let yamlConfigFile = nconf.get('configmap:yamlConfigFolderPath') + yamlFileName;
   if (isFromSource) {
     yamlConfigFile = `${dataPath}/${yamlFileName}`;

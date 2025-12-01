@@ -58,6 +58,7 @@ import type { JSON_EDITOR_CONTENT, YAML_EDITOR_CONTENT } from "@/types/props";
 import { distinctUntilChanged, fromEvent, Subscription, throttleTime } from "rxjs";
 import { map } from "rxjs/operators";
 import { OTHER_GROUP_INDEX, OTHER_GROUP_TITLE } from "@/types/global";
+import { formatDataType } from "@/utils";
 
 const store = useMainStore();
 const route = useRoute();
@@ -125,20 +126,6 @@ const handleIsShowYamlEditorChange = (newData: boolean) => {
 };
 const hideYamlEditor = () => {
   store.setIsShowingYamlEditor(false);
-};
-const formatDataType = (dataType: string, value: any) => {
-  let newValue = value;
-  if (dataType.toLowerCase() === "boolean") {
-    const stringValue = String(value).toLowerCase();
-    newValue = stringValue === "true" ? true : stringValue === "false" ? false : value;
-  } else if (dataType.toLowerCase() === "string") {
-    newValue = value === undefined ? "" : value.toString();
-  } else if (dataType.toLowerCase() === "number") {
-    newValue = isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10);
-  } else if (dataType.toLowerCase() === "array") {
-    newValue = newValue || [];
-  }
-  return newValue;
 };
 const formatPipelineGroups = (groups: PIPELINE_GROUPS[], options: PIPELINE_OPTION[]) => {
   // When there is no group, do not distinguish the step, do not verify on the step title
@@ -232,6 +219,7 @@ const updatePipelineOnPage = (pipelineId: string, pipelineName: string, pipeline
         }
         if (pageRes.options && pageRes.options.length > 0) {
           pipelineOptions = [...formatPipelineOptions(jsonEditorContent.value, pageRes.options)];
+          store.setOriginalOptionsContent(pipelineOptions);
         }
         // Note: cannot move below code to above code, because it needs to use pipelineOptions
         pipelineGroups.value = [...formatPipelineGroups(pageRes.groups || [], pipelineOptions)];
@@ -277,6 +265,7 @@ const validateNote = (str: string) => {
 const initEditorContent = (content: string) => {
   const contentYAML = load(content) || {};
   store.setYamlEditorContent(contentYAML);
+  store.setOriginalRecipeContent(contentYAML);
 };
 
 // Validate YAML content

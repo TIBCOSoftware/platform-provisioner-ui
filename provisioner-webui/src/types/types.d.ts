@@ -9,3 +9,9 @@ declare module "json-editor-vue3";
 declare module "vue3-markdown" {
   export const VMarkdownView: any;
 }
+declare module 'sha256-es' {
+  const SHA256: {
+    hash(input: string): string;
+  };
+  export default SHA256;
+}

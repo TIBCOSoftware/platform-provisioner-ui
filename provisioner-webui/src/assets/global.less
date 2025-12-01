@@ -33,9 +33,18 @@
     }
   }
 }
-.pv-error {
+.pv-error, .msg-error {
   // see the colors in bootstrap css v5.3.0: https://getbootstrap.com/docs/5.3/customize/color/
   color: var(--bs-danger);
+}
+.msg-success {
+  color: var(--bs-success);
+}
+.msg-warning {
+  color: var(--bs-warning);
+}
+.msg-info {
+  color: var(--bs-secondary-color);
 }
 
 .force-break {
@@ -53,8 +62,16 @@
 
   --p-button-padding-x: 0.45rem !important;
   --p-button-padding-y: 0.325rem !important;
+  --p-inputtext-padding-y: 0.325rem !important;
+  --p-autocomplete-option-padding: 6px 10px !important;
   .p-button {
     font-size: var(--bs-body-font-size);
+  }
+  .p-autocomplete-input {
+    font-size: 0.75rem;
+    &:focus {
+      box-shadow: none !important;
+    }
   }
   --yaml-editor-width: 700px;
 }
@@ -75,3 +92,9 @@
   }
 }
 // override the PrimeVue's primary color
+
+
+.form-control {
+  font-size: 0.75rem;
+  padding: 0.325rem 0.45rem;
+}

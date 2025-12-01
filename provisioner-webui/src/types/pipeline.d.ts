@@ -19,13 +19,21 @@ export interface PIPELINE_OPTION {
   labels?: string[];
   values?: string[];
   error?: string;
+  // for guiType: autocomplete
+  // dataSourceUrl is the API to get the autocomplete data, it should return an array of string
+  dataSourceUrl?: string;
+
   // for guiType: file, accept is the file type
   // see: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept
   accept?: string;
   fileSize?: number;  // in kilobytes
+
   // array, reference to other reference, e.g. ["meta.fileContent", "meta.deploymentAction"]
   // when current reference is set, the target reference will be disabled
   disableOtherFieldsWhenSet?: [];
+  // when current reference is set, the target reference will be enabled,
+  // this has higher priority than disableOtherFieldsWhenSet, better not to use both in the same option
+  enableOtherFieldsWhenSet?: [];
 }
 export interface PIPELINE_GROUPS {
   index: string | number;

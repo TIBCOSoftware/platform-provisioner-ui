@@ -1,3 +1,34 @@
+## [3.1.6] - 2025-11-25
+### Added
+- Support for config Helm Charts Url in landing page
+  - Support for loading Helm Chart name from custom Url
+  - Support for loading Helm Chart version from custom Url
+- Support for autocomplete guiType
+- Added some of npm dependencies
+  - Add "dayjs-plugin-utc": "0.1.2"
+  - Add "semver": "7.7.3"
+  - Add "sha256-es": "1.8.2"
+  - Add "@types/semver": "7.7.1",
+  - Add "cross-env": "10.1.0",
+### Changed
+- Fixed some of npm audit issues after upgrade dependencies
+  - Upgrade "js-yaml" from "4.1.0" to "4.1.1"
+  - Upgrade "vite" from "5.4.8" to "5.4.21"
+### Fixed
+- Fixed dev process issue in Windows system
+  - Use "cross-env" to replace "export" to set environment variables in npm scripts
+
+## [3.1.5] - 2025-10-22
+### Added
+- Support for store original yaml json from API server
+- Support for enableOtherFieldsWhenSet in yaml file
+  - when current reference is set, the target reference will be enabled, default is disabled
+### Changed
+- Fixed some of npm audit issues after upgrade dependencies
+  - Upgrade "axios" from "1.8.3" to "1.12.2"
+  - Upgrade "koa" from "2.15.4" to "2.16.3"
+  - Upgrade "@playwright/test" from "1.47.2" to "1.56.1"
+
 ## [3.1.4] - 2025-03-24
 ### Changed
 - Support for build local dev image with supervisord

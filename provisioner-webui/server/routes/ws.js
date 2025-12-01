@@ -12,6 +12,10 @@ const configMap = require('../configmap');
 const k8s = require('../k8s');
 const utils = require('../utils');
 const { handelError } = require('../utils');
+
+const fs = require('fs');
+const semver = require("semver");
+
 const isDev = process.env.NODE_ENV === 'development';
 const isOnPrem = process.env.ON_PREM_MODE === 'true';
 
@@ -138,6 +142,119 @@ router.get('/file-content', async (ctx, next) => {
     ctx.status = 404;
     ctx.body = "Not found.";
   }
+  next();
+});
+/**
+ * Get the available versions for a chart name from the tp-helm-charts index.yaml file.
+ *
+ * Query Parameters:
+ * - chartName: (optional) The chart name to get versions for. If not provided, returns all tenants with their versions.
+ * - helmChartUrl: (optional) The Helm chart URL of the index.yaml file to read. If not provided, uses the default file.
+ * - generated: (optional) If set, returns only the generated timestamp of the file.
+ */
+router.get('/helm-chart-version', async (ctx, next) => {
+  const chartName = ctx.query.chartName;
+  const token = ctx.query.token;
+  const helmChartUrl = ctx.query.helmChartUrl;
+  if (!helmChartUrl) {
+    ctx.status = 400;
+    ctx.body = "Missing helm Chart Url, need to config it from home page settings.";
+    next();
+    return;
+  }
+
+  const generated = ctx.query.generated;
+  const fileName = utils.simpleHelmChartUrlToFileName(helmChartUrl);
+  const filePath = configMap.downloadFolderPath + "/" + fileName;
+
+  let fileResponse;
+  if (fs.existsSync(filePath)) {
+    fileResponse = configMap.readYaml(filePath, true);
+  } else {
+    try {
+      const response = await utils.fetchHelmChartFile(helmChartUrl, token);
+      if (response?.status === 200 && response?.data) {
+        utils.saveHelmChartFile(filePath, response.data);
+        fileResponse = configMap.loadYamlContent(response.data);
+      }
+    } catch (err) {
+      console.log("axios fetchHelmChartFile error: ", err.response.statusText);
+    }
+  }
+  if (fileResponse) {
+    let pageContent = "";
+    if (generated) {
+      if (fileResponse.generated) {
+        pageContent = fileResponse.generated;
+      }
+    } else {
+      const entryObj = {};
+      const entries = fileResponse.entries || {};
+      for (const key in entries) {
+        const versions = [];
+        entries[key].forEach((item) => {
+          versions.push(item.version);
+        })
+        // remove duplicate versions and sorting in descending order
+        entryObj[key] = Array.from(new Set(versions))
+          .filter(v => semver.valid(v))
+          .sort(semver.rcompare);
+      }
+      pageContent = chartName ? entryObj[chartName] : entryObj;
+    }
+    ctx.status = 200;
+    ctx.body = pageContent;
+  } else {
+    ctx.status = 404;
+    ctx.body = `Yaml file cannot be accessed from ${helmChartUrl}, config it from home page settings.`;
+  }
+  next();
+});
+
+/**
+ * Fetch helm chart file from GitHub repository and save it locally.
+ * It uses ETag to avoid unnecessary downloads.
+ * The file is saved in the data folder with a name derived from the GitHub URL.
+ *
+ * Query Parameters:
+ * - helmChartUrl: The URL of the helm chart file in the GitHub repository.
+ * - token: (optional) Personal Access Token for GitHub authentication.
+ */
+router.get('/get-helm-chart-file', async (ctx, next) => {
+  const helmChartUrl = ctx.query.helmChartUrl;
+  const token = ctx.query.token;
+  if (!helmChartUrl) {
+    ctx.status = 400;
+    ctx.body = "Missing helmChartUrl parameter.";
+    next();
+    return;
+  }
+
+  const fileName = utils.simpleHelmChartUrlToFileName(helmChartUrl);
+  const filePath = configMap.downloadFolderPath + "/" + fileName;
+  let fileResponse;
+  if (fs.existsSync(filePath)) {
+    fileResponse = configMap.readYaml(filePath, true);
+  }
+  let bodyData;
+  try {
+    const response = await utils.fetchHelmChartFile(helmChartUrl, token, fileResponse?.etag);
+    if (response.status === 304) {
+      ctx.status = 304;
+      return;
+    } else if (response.status === 200) {
+      if (response.data) {
+        bodyData = utils.saveHelmChartFile(filePath, response.data, response.headers["etag"]);
+      }
+      ctx.status = 200;
+    } else {
+      ctx.status = response.status;
+    }
+  } catch (error) {
+    ctx.status = error.status;
+    bodyData = error.message;
+  }
+  ctx.body = bodyData;
   next();
 });
 
