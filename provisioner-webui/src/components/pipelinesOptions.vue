@@ -27,14 +27,14 @@
             <div class="pipeline-option-title" :title="opt.reference"
                    v-if="['multiselect', 'radio', 'textarea'].includes(opt.guiType)">
               {{ opt.name }}
-              <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length"></i>
+              <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="isToggleField(opt)"></i>
             </div>
 
             <!-- for guiType: input (string, number, password) -->
             <div v-if="opt.guiType === 'input'" :class="'pipeline-option-' + opt.guiType">
               <label class="pipeline-option-title" :for="getInputId(opt.guiType, groupIndex, optionIndex)" :title="opt.reference">
                 {{ opt.name }}
-                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length"></i>
+                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="isToggleField(opt)"></i>
               </label>
               <div class="field-container">
                 <input
@@ -55,7 +55,7 @@
             <div v-if="opt.guiType === 'file'" :class="'pipeline-option-' + opt.guiType">
               <label class="pipeline-option-title" :for="getInputId(opt.guiType, groupIndex, optionIndex)" :title="opt.reference">
                 {{ opt.name }}
-                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length"></i>
+                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="isToggleField(opt)"></i>
               </label>
               <div class="field-container">
                 <input type="file" class="form-control"
@@ -74,7 +74,7 @@
               <label class="pipeline-option-title" :for="getInputId(opt.guiType, groupIndex, optionIndex)" :title="opt.reference">
                 <input type="checkbox" :id="getInputId(opt.guiType, groupIndex, optionIndex)" v-model="opt.value" v-on:change="onInputChange(opt)" />
                 <span>{{ opt.name }}</span>
-                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length"></i>
+                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="isToggleField(opt)"></i>
               </label>
               <div>
                 <div class="description" v-if="opt.description" v-html="opt.description"></div>
@@ -123,8 +123,41 @@
                 </select>
 
                 <div class="description" v-if="opt.description" v-html="opt.description"></div>
+                <small class="pv-error" v-if="opt.required && (!opt.value || opt.value.length === 0)"> It's required. </small>
               </div>
-              <small class="pv-error" v-if="opt.required && (!opt.value || opt.value.length === 0)"> It's required. </small>
+            </div>
+
+            <!-- for guiType: autocomplete -->
+            <div v-if="opt.guiType === 'autocomplete'" :class="'pipeline-option-' + opt.guiType">
+              <div class="pipeline-option-title" :title="opt.reference">
+                {{ opt.name }}
+                <i class="pi" :class="{ 'pi-lock': opt.value,  'pi-unlock': !opt.value }" v-if="opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length"></i>
+              </div>
+              <div class="field-container">
+                <AutoComplete
+                  v-model="opt.value"
+                  :suggestions="autoCompleteFiltered[toHashKey(opt.reference)] || []"
+                  @complete="(e) => onAutoCompleteChange(e, opt)"
+                  @dropdown-click="() => onAutoCompleteDropdownClick(opt)"
+                  @change="onInputChange(opt)"
+                  :dropdown="true"
+                  placeholder="Search or type..."
+                >
+                  <template #empty>
+                    <div v-if="autoCompleteFiltered[toHashKey(opt.reference)] === undefined">
+                      <span class="d-inline-flex align-items-center">
+                        <i class="pi pi-spin pi-spinner me-2"></i>Loading...
+                      </span>
+                    </div>
+                    <div v-else>
+                      No results found
+                    </div>
+                  </template>
+                </AutoComplete>
+                <div class="description" v-if="opt.description" v-html="opt.description"></div>
+                <small class="pv-error" v-if="opt.required && (!opt.value || opt.value.length === 0)"> It's required. </small>
+                <small class="pv-error" v-if="opt.error">{{ opt.error }}</small>
+              </div>
             </div>
 
             <!-- for guiType: textarea -->
@@ -162,18 +195,19 @@ import Step from "primevue/step";
 import StepPanel from "primevue/steppanel";
 import Button from "primevue/button";
 import { ref, onBeforeUnmount, watch, computed, nextTick } from "vue";
-import { fromEvent, Subject, Subscription, tap } from "rxjs";
-import { debounceTime } from "rxjs/operators";
+import { debounce, fromEvent, of, Subject, Subscription, tap, timer } from "rxjs";
 import { VMarkdownView } from "vue3-markdown";
 import ace from "ace-builds";
 import type { PIPELINE_GROUPS, PIPELINE_OPTION } from "@/types/pipeline";
 import { useMainStore } from "@/stores/store";
 import type { PIPELINE_OPTIONS_PROP_TYPES } from "@/types/props";
-import utils from "@/utils";
+import utils, { formatDataType, toHashKey } from "@/utils";
 import { useRoute } from "vue-router";
 import { OTHER_GROUP_INDEX } from "@/types/global";
 import router from "@/router";
 import _ from "lodash";
+import AutoComplete, { type AutoCompleteCompleteEvent } from "primevue/autocomplete";
+import type { GITHUB_INFO } from "@/types/response";
 
 // for CDN resource
 // ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.version + "/src-noconflict/");
@@ -206,7 +240,10 @@ const getStepIndex = (pipelineGroups: PIPELINE_GROUPS[]) => {
 };
 const activeStep = ref<STEPPER_INDEX>(getStepIndex(props.pipelineGroups));
 const editors = ref<Map<string, InstanceType<typeof ace.Editor>>>(new Map());
+const autoCompleteCached = ref<Record<string, string[]>>({});
+const autoCompleteFiltered = ref<Record<string, string[]>>({});
 
+const localStorageKey = "helmChartConfig";
 const subscriptions: Subscription[] = [];
 const inputSubject = new Subject<PIPELINE_OPTION>();
 const breakLineLimit = 4; // Number of the input radio or checkbox per line
@@ -346,36 +383,128 @@ const onInputChange = (opt: PIPELINE_OPTION, event?: Event) => {
     ...opt,
     value: opt.guiType === "input" && event ? (event.target as HTMLInputElement).value : opt.value
   };
-  checkboxDisableOtherFields(newOpt);
   inputSubject.next(newOpt);
+  nextTick(() => {
+    checkboxDisableOtherFields(newOpt, true);
+    checkboxEnableOtherFields(newOpt, true);
+  });
 };
-const checkboxDisableOtherFields = (opt: PIPELINE_OPTION) => {
-  if (opt.disableOtherFieldsWhenSet && opt.disableOtherFieldsWhenSet.length > 0) {
-    opt.disableOtherFieldsWhenSet.forEach(field => {
-      nextTick(() => {
-        document.querySelectorAll('[data-reference="'+ field +'"]').forEach(fieldset => {
-          if (fieldset instanceof HTMLElement) {
-            let isDisableOther = false;
-            if (opt.type === "number" && Number(opt.value) !== 0) {
-              isDisableOther = true;
-            } else if (opt.type === "string" && opt.value !== "") {
-              isDisableOther = true;
-            } else if (opt.type === "boolean" && opt.value === true) {
-              isDisableOther = true;
-            } else if (opt.type === "array" && opt.value.length > 0) {
-              isDisableOther = true;
-            }
-            fieldset.classList.toggle("disabled-fieldset", isDisableOther);
-          }
-        });
+
+const getChartUrl = (val: any) => {
+  if (typeof val === 'string') {
+    return val.trim();
+  }
+  if (val && typeof val === 'object' && typeof val.url === 'string') {
+    return val.url.trim();
+  }
+  return '';
+}
+
+const onAutoCompleteDropdownClick = (opt: PIPELINE_OPTION) => {
+  let { reference, dataSourceUrl } = opt;
+  if (!reference || !dataSourceUrl) {
+    return;
+  }
+  const hashKeyDataSourceUrl = toHashKey(dataSourceUrl);
+  const hashKeyReference = toHashKey(reference);
+  const cachedData = autoCompleteCached.value[hashKeyDataSourceUrl];
+  if (cachedData) {
+    autoCompleteFiltered.value[hashKeyReference] = [...cachedData];
+    return;
+  }
+
+  // Load saved config from local storage
+  const savedConfig = localStorage.getItem(localStorageKey);
+  let helmChartVersionsLocalStorageData: GITHUB_INFO | null = null;
+  if (savedConfig) {
+    helmChartVersionsLocalStorageData = JSON.parse(savedConfig);
+    const helmChartUrl = getChartUrl(helmChartVersionsLocalStorageData?.helmChartUrl);
+    if (helmChartUrl) {
+      dataSourceUrl+= `&helmChartUrl=${encodeURIComponent(helmChartUrl)}`;
+    }
+  }
+
+  const q = opt.value.trim();
+  utils.httpGet(dataSourceUrl).then((response: string[]) => {
+    autoCompleteCached.value[hashKeyDataSourceUrl] = [...response];
+    autoCompleteFiltered.value[hashKeyReference] = q ? response.filter(item =>
+      item.toLowerCase().includes(q)
+    ) : [...response];
+  }).catch(() => {
+    autoCompleteFiltered.value[hashKeyReference] = [];
+  });
+}
+
+const onAutoCompleteChange = (event: AutoCompleteCompleteEvent, opt: PIPELINE_OPTION) => {
+  const { reference, dataSourceUrl } = opt;
+  const q = event.query.trim();
+  if (q === "" || !reference || !dataSourceUrl) {
+    return;
+  }
+
+  const hashKeyDataSourceUrl = toHashKey(dataSourceUrl);
+  const hashKeyReference = toHashKey(reference);
+  const cachedData = autoCompleteCached.value[hashKeyDataSourceUrl];
+  if (cachedData) {
+    autoCompleteFiltered.value[hashKeyReference] = cachedData.filter(item =>
+      item.toLowerCase().includes(q)
+    );
+    return;
+  }
+  onAutoCompleteDropdownClick(opt);
+}
+
+const isToggleField = (opt: PIPELINE_OPTION): boolean => {
+  // only show lock/unlock icon for disableOtherFieldsWhenSet attribute
+  return !!(opt.disableOtherFieldsWhenSet?.length);
+};
+
+const isFieldActive = (opt: PIPELINE_OPTION): boolean => {
+  switch (opt.type) {
+    case "number": return Number(opt.value) !== 0;
+    case "string": return opt.value !== "";
+    case "boolean": return opt.value === true;
+    case "array": return Array.isArray(opt.value) && opt.value.length > 0;
+    default: return false;
+  }
+}
+
+const toggleFields = (fields: string[] | undefined, disable: boolean, isEmitInputChange = false) => {
+  if (fields && fields.length > 0) {
+    fields.forEach((field, i) => {
+      document.querySelectorAll('[data-reference="' + field + '"]').forEach(fieldset => {
+        if (fieldset instanceof HTMLElement) {
+          fieldset.classList.toggle("disabled-fieldset", disable);
+        }
       });
+
+      const otherOpt = _.find(store.originalOptionsContent, { reference: field });
+      if (isEmitInputChange && otherOpt && disable) {
+        let refenceDefaultValue = _.get(store.originalRecipeContent, field);
+        otherOpt.value = formatDataType(otherOpt.type, refenceDefaultValue);
+
+        setTimeout(() => {
+          inputSubject.next(otherOpt);
+          // make sure inputSubject will be called after 300ms
+        }, 300*(i+1));
+      }
     });
   }
 };
-const initCheckboxDisableOtherFields = (options: PIPELINE_OPTION[]) => {
+
+const checkboxDisableOtherFields = (opt: PIPELINE_OPTION, isEmitInputChange = false) => {
+  const isFiledActive = isFieldActive(opt);
+  toggleFields(opt.disableOtherFieldsWhenSet, isFiledActive, isEmitInputChange);
+};
+const checkboxEnableOtherFields = (opt: PIPELINE_OPTION, isEmitInputChange = false) => {
+  const isFiledActive = isFieldActive(opt);
+  toggleFields(opt.enableOtherFieldsWhenSet, !isFiledActive, isEmitInputChange);
+};
+const initCheckboxToggleOtherFields = (options: PIPELINE_OPTION[]) => {
   if (options && options.length > 0) {
     options.forEach((opt: PIPELINE_OPTION) => {
       checkboxDisableOtherFields(opt);
+      checkboxEnableOtherFields(opt);
     });
   }
 };
@@ -387,7 +516,9 @@ const initInputChange = () => {
     inputSubject
       .pipe(
         tap(() => store.setIsEditingYaml(true)),
-        debounceTime(300)
+        debounce((opt: PIPELINE_OPTION) =>
+          opt.guiType === "autocomplete" ? of(opt) : timer(200)
+        )
       )
       .subscribe((opt: PIPELINE_OPTION) => {
         emitPipelineOptionFieldChange(opt);
@@ -403,8 +534,9 @@ const unsubscribe = () => {
 const onStepChange = (index: STEPPER_INDEX) => {
   // get current pipeline options, and initialize the checkboxDisableOtherFields
   const currentPipelineOptions = _.find(props.pipelineGroups, { index })?.options || [];
-  initCheckboxDisableOtherFields(currentPipelineOptions);
-
+  nextTick(() => {
+    initCheckboxToggleOtherFields(currentPipelineOptions);
+  });
   activeStep.value = index;
   unsubscribe();
   nextTick(() => {
@@ -494,6 +626,7 @@ onBeforeUnmount(() => {
     }
     .pipeline-option-input,
     .pipeline-option-checkbox,
+    .pipeline-option-autocomplete,
     .pipeline-option-dropdown {
       display: flex;
       flex-wrap: wrap;
@@ -515,6 +648,10 @@ onBeforeUnmount(() => {
         word-wrap: break-word;
         overflow-wrap: break-word;
         width: 230px;
+      }
+      small.pv-error {
+        display: block;
+        width: 100%;
       }
     }
     .pipeline-option-input {

@@ -89,10 +89,24 @@ options:
       - "update"
     reference: "meta.deploymentAction"
     description: "The deployment action dropdown list"
+  - name: "AutoComplete platform-base version"
+    dataSourceUrl: "/cic2-ws/v1/helm-chart-version?chartName=platform-base"
+    type: string
+    guiType: autocomplete
+    required: true
+    reference: "meta.autoComplete.platformBase"
+    description: "The AutoComplete platform-base version dropdown list"
+    enableOtherFieldsWhenSet: ["meta.autoComplete.platform-bootstrap"]
+  - name: "AutoComplete platform-bootstrap version"
+    dataSourceUrl: "/cic2-ws/v1/helm-chart-version?chartName=platform-bootstrap"
+    type: string
+    guiType: autocomplete
+    required: true
+    reference: "meta.autoComplete.platform-bootstrap"
+    description: "The AutoComplete platform-bootstrap version dropdown list"
   - name: "File upload"
     type: string
     guiType: file
-    required: true
     description: "Select file to upload"
     accept: ".zip,.tar,.gz"
     fileSize: 100
@@ -103,6 +117,23 @@ options:
     description: "The description"
     guiType: textarea
     reference: "helmCharts[0].values.content"
+  - name: "Deploy and Provision BWCE"
+    type: boolean
+    required: true
+    description: "Deploy and Provision BWCE"
+    guiType: checkbox
+    reference: "installation.tibco.bwce"
+    enableOtherFieldsWhenSet: ["installation.tibco.bw5ce", "installation.tibco.others"]
+  - name: "Deploy and Provision BW5CE"
+    type: boolean
+    description: "Deploy and Provision BW5CE"
+    guiType: checkbox
+    reference: "installation.tibco.bw5ce"
+  - name: "Deploy and Provision others"
+    type: boolean
+    description: "Deploy and Provision others"
+    guiType: checkbox
+    reference: "installation.tibco.others"
 recipe: |
   version: 2.0.0
   meta:
@@ -110,6 +141,9 @@ recipe: |
     deploymentArtifactRepo: cic2-aws-deployer
     deploymentArtifactVersion: aws-dev
     deploymentAction: delete
+    autoComplete:
+      platformBase: ''
+      platform-bootstrap: ''
     fileContent: ""
   installation:
     name: cic20
@@ -119,6 +153,9 @@ recipe: |
       environment: Development
       connectCic1: false
       connectCic2: true
+      bwce: false
+      bw5ce: false
+      others: false
   networking:
     vpcs:
       - identifier: legacy

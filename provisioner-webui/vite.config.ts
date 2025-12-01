@@ -28,6 +28,8 @@ export default defineConfig({
     // change the client build target folder
     outDir: 'dist/client',
     sourcemap: true, // equivalent to devtool: 'source-map'
+    minify: false,
+    cssMinify: false,
     rollupOptions: {
       output: {
         manualChunks: {

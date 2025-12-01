@@ -4,11 +4,13 @@
  * in the license file that is distributed with this file.
  */
 
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 import type { RES_USER } from "@/types/response";
 import { toast } from "vue3-toastify";
 import type { PIPELINE_DEPLOY_PARAMS, PIPELINE_DEPLOY_PARAMS_AWS } from "@/types/pipeline";
 import type { YAML_EDITOR_CONTENT } from "@/types/props";
+import { cloneDeep } from "lodash";
+import SHA256 from "sha256-es";
 
 let user: RES_USER;
 export default {
@@ -35,14 +37,14 @@ export default {
       `/pipelinerun/${params.account}/${params.region}?pipeline=${params.pipeline}`;
   },
 
-  httpGet(url: string) {
-    return axios.get(url).then((response) => response.data);
+  httpGet(url: string, config?: AxiosRequestConfig | undefined) {
+    return axios.get(url, config).then((response) => response.data);
   },
-  httpPost(url: string, data?: any) {
-    return axios.post(url, data);
+  httpPost(url: string, data?: any, config?: AxiosRequestConfig | undefined) {
+    return axios.post(url, data, config);
   },
-  httpDelete(url: string) {
-    return axios.delete(url);
+  httpDelete(url: string, config?: AxiosRequestConfig | undefined) {
+    return axios.delete(url, config);
   },
   callRestApi(url: string, method: string, data: any) {
     return axios.create().request({
@@ -95,3 +97,27 @@ export default {
       });
   },
 };
+
+export function formatDataType(dataType: string, value: any) {
+  let newValue = value;
+  if (dataType.toLowerCase() === "boolean") {
+    const stringValue = String(value).toLowerCase();
+    newValue = stringValue === "true" ? true : stringValue === "false" ? false : value;
+  } else if (dataType.toLowerCase() === "string") {
+    newValue = value === undefined ? "" : value.toString();
+  } else if (dataType.toLowerCase() === "number") {
+    newValue = isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10);
+  } else if (dataType.toLowerCase() === "array") {
+    newValue = newValue || [];
+  }
+  return newValue;
+}
+
+export function resetObjectAndAssign(target: any, content: any) {
+  Object.keys(target).forEach(key => delete target[key]);
+  Object.assign(target, cloneDeep(content));
+}
+
+export function toHashKey(input: string, length = 16) {
+  return SHA256.hash(input).substring(0, length);
+}

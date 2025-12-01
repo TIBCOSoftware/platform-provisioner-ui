@@ -4,7 +4,7 @@ The Platform Provisioner local menu configuration is defined in https://github.c
 Please clone the `platform-provisioner` repo and navigate to the `charts/provisioner-config-local` directory.
 
 ### Config top menu items: menuContent.yaml
-This file is used to define the menu items in the top navigation bar.
+#### 1. Define the menu items in the top navigation bar.
 
 * Real data: `charts/provisioner-config-local/config/menuContent.yaml`
 
@@ -55,6 +55,24 @@ menuConfig:
             target: "_blank"        # Opens the link in a new tab.
 ```
 
+#### 2. Define the helm chart config urls.
+
+-  [X]  Support for config helm chart urls. `chartConfig:`
+     -  Helm repo index.yaml `url` support for: GitHub url, or GitHub raw content url.
+
+The format is as follows:
+
+```yaml
+chartConfig:
+  chartUrls:
+    # Helm repo index.yaml file url format support for:
+    # GitHub url, or GitHub raw content url.
+    - url: "https://github.com/TIBCOSoftware/tp-helm-charts/blob/gh-pages/index.yaml"
+      description: "TIBCO Helm Charts"
+    - url: "https://github.com/tibco/tp-helm-charts/blob/gh-pages/index.yaml"
+      description: "TIBCO Internal Helm Charts"
+```
+
 ![top-menus.png](images/top-menus.png)
 
 ### Config pipeline input options: pp-*.yaml
@@ -64,6 +82,32 @@ This file is used to define the additional input options of the pipeline.
 * Real data: `charts/provisioner-config-local/config/pp-*.yaml`
 * Mock data: `provisioner-webui/server/data/pp-*.yaml`
 
+-  [X]  Support for `autocomplete` guiType from `3.1.6`.
+      ```yaml
+      - name: "AutoComplete platform-base version"
+        dataSourceUrl: "/cic2-ws/v1/helm-chart-version?chartName=platform-base"
+        type: string
+        guiType: autocomplete
+        required: true
+        reference: "meta.autoComplete.platformBase"
+        description: "The AutoComplete platform-base version dropdown list"
+        enableOtherFieldsWhenSet: ["meta.autoComplete.platform-bootstrap"]
+      ```
+   ![option-autocomplete.png](images/option-autocomplete.png)
+* Note: `dataSourceUrl` is required for `autocomplete` guiType.
+* Note: `dataSourceUrl` API must return an array of string, example:
+  ```json
+  [
+    "1.0.0",
+    "1.1.0",
+    "1.2.0",
+    "2.0.0"
+  ]
+  ```
+-  [X]  Support for field mutual exclusion(will enable other fields if current field is set) from `3.1.5`.
+  * Note: `enableOtherFieldsWhenSet` is support for any field type, it means when current filed is set, will enable other defined disabled fields.
+  * Note: `enableOtherFieldsWhenSet` is an array, the value is other filed reference, example: `["installation.tibco.bw5ce", "installation.tibco.others"]`.
+
 -  [X]  Support for field mutual exclusion(will disable other fields if current field is set) from `3.1.2`.
   * Note: `disableOtherFieldsWhenSet` is support for any field type, it means when current filed is set, will disable other defined fields.
   * Note: `disableOtherFieldsWhenSet` is an array, the value is other filed reference, example: `["meta.fileContent", "networking.vpcs[1].cidrs"]`.
@@ -72,7 +116,7 @@ This file is used to define the additional input options of the pipeline.
   * Note: default `fileSize` is 100, the unit is KB.
   * ![<input type="file">](images/option-file.png)
 -  [X]  Support for group option fields from `3.1.0`.
-      ```
+      ```yaml
       groups:
         - title: "Step 1: Deploy Control Plane"
           index: 1
@@ -92,7 +136,7 @@ This file is used to define the additional input options of the pipeline.
         - name: "pipeline field 3"
           groupIndex: 3
         - name: "pipeline field others"
-          // no groupIndex item will be in the others group
+          # If an item does not have a groupIndex, it will appear in a group named others.
       ```
    ![Group options](images/group-options.png)
 -  [X]  Support for define the title of the field. `name: "Field name"`
@@ -103,7 +147,7 @@ This file is used to define the additional input options of the pipeline.
 -  [X]  Support for reference to the JSON path. `reference: "networking.vpcs[1].identifier"`
 -  [X]  Support for a test reference path. See the `Test reference path` button in the pipeline page.
 -  [X]  Support for using a custom recipe to override the default value.
-     ```
+     ```yaml
      recipe: |
        version: 2.0.0
      ```
@@ -135,10 +179,12 @@ This file is used to define the additional input options of the pipeline.
 | input(description)                  | <pre style="width: 400px;width: 400px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">- name: "Installation Owner"<br/>  type: string<br>  guiType: input<br/>  description: "This is a description. &lt;a href='#'&gt;Cloud&lt;/a&gt;"<br/>  reference: "meta.installationOwner"</pre>                                                          | ![input-string](images/option-input-string.png)                   |
 | checkbox                            | <pre>- name: "Is connect cic1"<br/>  type: boolean<br>  guiType: checkbox<br/>  reference: "installation.tibco.connectCic1"</pre>                                                                                                                                                                                                                                           | ![checkbox](images/option-checkbox.png)                           |
 | checkbox<br/>(disable other fields) | <pre>- name: "Is connect cic1"<br/>  type: boolean<br>  guiType: checkbox<br/>  reference: "installation.tibco.connectCic1"<br/>  disableOtherFieldsWhenSet: ["meta.fileContent", "networking.vpcs[1].cidrs"]</pre>                                                                                                                                                         | ![checkbox](images/option-disable-other-fields-when-set.png)      |
+| checkbox<br/>(enable other fields)  | <pre>- name: "Deploy and Provision BWCE"<br/>  type: boolean<br/>  guiType: checkbox<br/>  reference: "installation.tibco.bwce"<br/>  enableOtherFieldsWhenSet: ["installation.tibco.bw5ce", "installation.tibco.others"]</pre>                                                                                                                                             | ![checkbox](images/option-enable-other-fields-when-set.png)       |
 | textarea                            | <pre>- name: "Description<br/>  cic-gatekeeper:\n    enabled: false"<br/>  type: string<br>  guiType: textarea<br/>  lang: yaml<br/>  reference: "helmCharts[0].values.content"</pre>                                                                                                                                                                                       | ![textarea](images/option-textarea.png)                           |
 | multiselect                         | <pre>- name: "Multiselect<br/>  labels:<br/>    - "10.195.0.0/16"<br/>    - "10.195.0.0/17"<br/>  values:<br/>    - "10.195.0.0/16"<br/>    - "10.195.0.0/17"<br/>  type: array<br/>  guiType: multiselect<br/>  reference: "networking.vpcs[1].cidrs"</pre>                                                                                                                | ![multiselect](images/option-multiselect.png)                     |
 | radio                               | <pre>- name: "Radio<br/>  labels:<br/>    - "Install"<br/>    - "Upgrade"<br/>  values:<br/>    - "install"<br/>    - "upgrade"<br/>  type: string<br/>  guiType: radio<br/>  reference: "networking.vpcs[1].cidrs"</pre>                                                                                                                                                   | ![radio](images/option-radio.png)                                 |
 | dropdown                            | <pre>- name: "Flag timeout"<br/>  type: string<br/>  guiType: dropdown<br/>  required: true<br/>  labels:<br/>    - "30 minutes"<br/>    - "1 hours"<br/>    - "2 hours"<br/>    - "4 hours"<br/>  values:<br/>    - "30m"<br/>    - "1h"<br/>    - "2h"<br/>    - "4h"<br/>  reference: "helmCharts[0].flags.timeout"<br/>  description: "flags timeout description"</pre> | ![radio](images/option-dropdown.png)                              |
+| autocomplete                        | <pre>- name: "AutoComplete"<br/>  dataSourceUrl: "/cic2-ws/v1/helm-chart-version?chartName=platform-base"<br/>  type: string<br/>  guiType: autocomplete<br/>  reference: "meta.autoComplete.platformBase"<br/>  description: "autocomplete description"</pre>                                                                                                              | ![radio](images/option-autocomplete.png)                          |
 | file                                | <pre>- name: "File upload"<br/>  type: string<br/>  guiType: file<br/>  required: true<br/>  description: "Select file to upload"<br/>  accept: ".zip,.tar,.gz"<br/>  fileSize: 100<br/>  reference: "meta.fileContent"</pre>                                                                                                                                               | ![file](images/option-file.png)                                   |
 
 The format is as follows:
@@ -233,4 +279,29 @@ options:
     type: string
     guiType: textarea
     reference: "helmCharts[0].values.content"
+  - name: "Deploy and Provision BWCE"
+    type: boolean
+    required: true
+    description: "Deploy and Provision BWCE"
+    guiType: checkbox
+    reference: "installation.tibco.bwce"
+    enableOtherFieldsWhenSet: ["installation.tibco.bw5ce", "installation.tibco.others"]
+  - name: "Deploy and Provision BW5CE"
+    type: boolean
+    description: "Deploy and Provision BW5CE"
+    guiType: checkbox
+    reference: "installation.tibco.bw5ce"
+  - name: "Deploy and Provision others"
+    type: boolean
+    description: "Deploy and Provision others"
+    guiType: checkbox
+    reference: "installation.tibco.others"
+  - name: "AutoComplete platform-base version"
+    dataSourceUrl: "/cic2-ws/v1/helm-chart-version?chartName=platform-base"
+    type: string
+    guiType: autocomplete
+    required: true
+    reference: "meta.autoComplete.platformBase"
+    description: "The AutoComplete platform-base version dropdown list"
+    enableOtherFieldsWhenSet: ["meta.autoComplete.platform-bootstrap"]
 ```
