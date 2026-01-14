@@ -64,7 +64,7 @@
     "sha256-es": "1.8.2",
     "vue": "3.5.9",
     "vue-router": "4.4.5",
-    "vue3-markdown": "1.1.9",
+    "vue3-markdown": "1.2.17",
     "vue3-toastify": "0.2.3"
   },
   "devDependencies": {
