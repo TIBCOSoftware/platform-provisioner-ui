@@ -52,7 +52,7 @@
     "koa-router": "13.0.1",
     "koa-session": "6.4.0",
     "koa-static": "5.0.0",
-    "lodash": "4.17.21",
+    "lodash": "4.17.23",
     "nconf": "0.12.1",
     "passport-saml": "3.2.4",
     "pinia": "2.2.2",
