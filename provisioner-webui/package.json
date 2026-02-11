@@ -33,7 +33,7 @@
     "@vuelidate/validators": "2.0.4",
     "@wdns/vue-code-block": "2.3.3",
     "ace-builds": "1.36.2",
-    "axios": "1.12.2",
+    "axios": "1.13.5",
     "bootstrap": "5.3.3",
     "bootstrap-icons": "1.11.3",
     "dayjs": "1.11.13",
