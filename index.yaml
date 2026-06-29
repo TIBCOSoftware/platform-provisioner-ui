@@ -3,6 +3,20 @@ entries:
   platform-provisioner-ui:
   - apiVersion: v2
     appVersion: 2.0.0
+    created: "2026-06-29T03:42:54.249672259Z"
+    description: A Helm chart for platform-provisioner-ui
+    digest: 510dec962d81b91328f35bd5ea2a022829ba67f50c7536a23ada75b8bf4244a4
+    home: https://github.com/TIBCOSoftware/tp-helm-charts
+    maintainers:
+    - email: cloud@tibco.com
+      name: TIBCO Cloud Dev Team
+    name: platform-provisioner-ui
+    type: application
+    urls:
+    - https://github.com/TIBCOSoftware/platform-provisioner-ui/releases/download/platform-provisioner-ui-1.0.17/platform-provisioner-ui-1.0.17.tgz
+    version: 1.0.17
+  - apiVersion: v2
+    appVersion: 2.0.0
     created: "2025-12-01T20:54:31.947146956Z"
     description: A Helm chart for platform-provisioner-ui
     digest: 996f2513c28b8b56b349da7bc02c7669e23b92c247a30f3b75964d761bdaae49
@@ -29,4 +43,4 @@ entries:
     urls:
     - https://github.com/TIBCOSoftware/platform-provisioner-ui/releases/download/platform-provisioner-ui-1.0.9/platform-provisioner-ui-1.0.9.tgz
     version: 1.0.9
-generated: "2025-12-01T20:54:31.947155171Z"
+generated: "2026-06-29T03:42:54.249685554Z"
