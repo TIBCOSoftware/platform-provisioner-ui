@@ -1,12 +1,21 @@
 /*
  * Copyright © 2025. Cloud Software Group, Inc.
- * This file is subject to the license terms contained
- * in the license file that is distributed with this file.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 'use strict';
 
-const Strategy = require('passport-saml').Strategy;
+const Strategy = require('@node-saml/passport-saml').Strategy;
 const passport = require('koa-passport');
 const fs = require('fs');
 
@@ -66,20 +75,32 @@ function init() {
       })());
   }
 
+  // Build callbackUrl from protocol and the configured callback path
+  // node-saml v5: callbackUrl is required (path/protocol/host options were removed)
+  const callbackPath = (ssoConfig && ssoConfig.sso && ssoConfig.sso.loginCallbackPath) || '/saml/acscallback';
+  const callbackHost = (ssoConfig && ssoConfig.sso && ssoConfig.sso.callbackHost) || '';
+  const callbackUrl = callbackHost ? `${protocol}//${callbackHost}${callbackPath}` : callbackPath;
+
   const samlConf = {
-    path: '/saml/acscallback',
-    // set the protocol to https: instead of default http:
-    protocol,
+    callbackUrl,
     entryPoint,
     logoutUrl,
     issuer,
-    cert: fs.readFileSync(pathToPublicCert, 'utf8'),
+    // v5: cert renamed to idpCert
+    idpCert: fs.readFileSync(pathToPublicCert, 'utf8'),
     privateKey: fs.readFileSync(privateKey, 'utf8'),
     // don't pass NameIDPolicy in request
     identifierFormat: null,
     // no forceAuthn in request is the default behavior
     // forceAuthn: false,
-    signatureAlgorithm
+    signatureAlgorithm,
+    // v4: audience is required; set to false to skip validation
+    // (old v3 didn't validate audience; the IdP sends SP entity ID which differs from issuer)
+    audience: false,
+    // v4: these default to true now; set to false to maintain compatibility
+    // with IdPs that don't sign both the response and assertions
+    wantAssertionsSigned: false,
+    wantAuthnResponseSigned: false,
   };
 
   let samlStrategy;

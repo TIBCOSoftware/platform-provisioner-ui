@@ -1,3 +1,18 @@
+#
+# Copyright © 2025. Cloud Software Group, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 pipelineName: "Generic runner new title"
 description: "(New) Tekton Pipelines is an open source project that you can use to configure and run continuous integration and continuous deployment pipelines within a Kubernetes cluster. Tekton pipelines are defined in yaml files, which are typically stored in a Git repository (repo)."
 groups:
@@ -37,7 +52,6 @@ options:
       The sandbox subdomain ( CP/DP Env ) is the naming for your current cluster environment / sandobox subdomain for main ingress. We suggest to use your LDAP as the CP/DP env.
       Eg. for Azure <sandbox_subdomain>.<account_sandbox>.azure.dataplanes.pro
       Eg. for AWS <sandbox_subdomain>.<account_sandbox>.dataplanes.pro
-      Account sandbox list: <a href='https://confluence.tibco.com/pages/viewpage.action?pageId=190135472' target='_blank'>link</a>
   - name: "GUI_CP_ADMIN_EMAIL"
     type: string
     guiType: input
@@ -63,7 +77,7 @@ options:
     guiType: input
     reference: "meta.globalEnvVariable.GUI_CP_CONTAINER_REGISTRY"
     description: |
-      For Azure use jFrog registry. `csgprduswrepoedge.jfrog.io`. For ECR use `664529841144.dkr.ecr.us-west-2.amazonaws.com`
+      For Azure use jFrog registry. `csgprduswrepoedge.jfrog.io`. For ECR use `xxx.dkr.ecr.us-west-2.amazonaws.com`
   - name: "GUI_CP_CONTAINER_REGISTRY_USERNAME"
     type: string
     guiType: input
@@ -84,7 +98,7 @@ recipe: |
       # the github username for private cp chart repo
       GUI_GITHUB_USER_NAME: "cp-test"
       # image registry
-      GUI_CP_CONTAINER_REGISTRY: 664529841144.dkr.ecr.us-west-2.amazonaws.com
+      GUI_CP_CONTAINER_REGISTRY: xxx.dkr.ecr.us-west-2.amazonaws.com
       GUI_CP_CONTAINER_REGISTRY_USERNAME: ""
   tasks:
     - condition: true

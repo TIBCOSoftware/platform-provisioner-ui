@@ -1,12 +1,14 @@
 name: Release Helm Charts
 
+# Charts are released together with an app release: pushing a v*.*.* tag
+# publishes the chart whose version is in Chart.yaml at that tag.
+# (Previously this ran on every push to main/releases/** — which published
+# the chart *before* the PR was even reviewed. Now it only runs on a tag.)
 on:
   push:
-    branches:
-      - 'main'
-      - 'releases/**'
-    paths:
-      - 'charts/**'
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch: {}
 
 jobs:
   release:

@@ -1,110 +1,145 @@
 <!--
   - Copyright © 2025. Cloud Software Group, Inc.
-  - This file is subject to the license terms contained
-  - in the license file that is distributed with this file.
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
   -->
 
 <template>
   <div id="yaml-view">
     <!-- REST API endpoint URL -->
-    <div class="rest-url">
-      <InputGroup>
-        <InputGroupAddon>REST API endpoint URL</InputGroupAddon>
-        <InputText type="text" disabled :modelValue="restUrl" />
-        <Button label="Copy" severity="info" icon="pi pi-copy" @click="copyRestUrl" v-bind:disabled="!restUrl" />
-      </InputGroup>
+    <div class="rest-url mb-5">
+      <label class="rest-url-label">REST API endpoint URL</label>
+      <div class="rest-url-row">
+        <InputText class="rest-url-input" disabled :modelValue="restUrl" />
+        <Button severity="info" :disabled="!restUrl" @click="copyRestUrl">
+          <i class="bi bi-clipboard" />
+          Copy
+        </Button>
+      </div>
     </div>
 
     <!-- Editor Tabs -->
-    <ul class="nav nav-tabs" id="editorsTab" role="tablist">
-      <li class="nav-item">
-        <a
-          class="nav-link active"
-          id="yaml-editor-tab"
-          data-bs-toggle="tab"
-          href="#yamlEditor"
-          role="tab"
-          v-on:click="activeEditor('yaml')"
-          aria-controls="yamlEditor"
-          aria-selected="false"
-        >
-          YAML Editor
-        </a>
-      </li>
-      <li class="nav-item">
-        <a
-          class="nav-link"
-          id="json-editor-tab"
-          data-bs-toggle="tab"
-          href="#jsonEditor"
-          role="tab"
-          v-on:click="activeEditor('json')"
-          aria-controls="jsonEditor"
-          aria-selected="true"
-        >
-          JSON Viewer
-        </a>
-      </li>
-    </ul>
-
-    <!-- Editors -->
-    <div class="tab-content" id="editorTabsContent">
-      <div class="tab-pane fade show active" id="yamlEditor" role="tabpanel" aria-labelledby="yaml-editor-tab">
-        <!-- YAML Viewer -->
-        <yaml-editor-container
-          v-bind:content="yamlEditorContent"
-          ref="yamlEditor"
-        >
-        </yaml-editor-container>
-      </div>
-      <div class="tab-pane fade" id="jsonEditor" role="tabpanel" aria-labelledby="json-editor-tab">
-        <!-- JSON Editor -->
-        <json-editor-vue v-model="jsonEditorContent" :options="jsonEditorOptions" :plus="false" ref="jsonEditor" />
-      </div>
-    </div>
+    <Tabs :value="currentEditor" @update:value="activeEditor">
+      <TabList>
+        <Tab value="yaml">YAML Editor</Tab>
+        <Tab value="json">JSON Viewer</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="yaml">
+          <!-- YAML Viewer -->
+          <yaml-editor-container v-bind:content="yamlEditorContent" ref="yamlEditor"> </yaml-editor-container>
+        </TabPanel>
+        <TabPanel value="json">
+          <!-- JSON Editor -->
+          <json-editor-vue id="jsonEditor" v-model="jsonEditorContent" :options="jsonEditorOptions" :plus="false" ref="jsonEditor" />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
     <!-- Actions -->
     <div class="form-buttons">
-      <Button label="Run" severity="success" icon="pi pi-check" :disabled="isInValid || isEditingYaml" @click="onPipelineDeploy" />
-      <Button label="Status" severity="info" icon="pi pi-cog" :disabled="isInValid || isEditingYaml" @click="openStatusLink" />
-      <Button label="Copy payload" severity="info" icon="pi pi-copy" :disabled="isEditingYaml" @click="copyJson()" />
+      <Button severity="success" :disabled="isInValid || isEditingYaml" @click="onPipelineDeploy">
+        <i class="bi bi-check-lg" />
+        Run
+      </Button>
+      <Button severity="info" :disabled="isInValid || isEditingYaml" @click="openStatusLink">
+        <i class="bi bi-gear" />
+        Status
+      </Button>
+      <Button severity="info" :disabled="isEditingYaml" @click="copyJson()">
+        <i class="bi bi-clipboard" />
+        Copy payload
+      </Button>
     </div>
     <div class="test-reference" v-if="isDev">
       <div class="test-reference-search">
-        <input type="text" v-model="referencePath" class="form-control" />
-        <Button label="Test reference path" severity="info" icon="pi pi-search" :disabled="isEditingYaml" @click="onTestReference()" />
+        <InputText v-model="referencePath" class="w-full" />
+        <Button severity="info" :disabled="isEditingYaml" @click="onTestReference()">
+          <i class="bi bi-search" />
+          Test reference path
+        </Button>
       </div>
       <small class="force-break">
-        Note: Test reference path for files <i>~/github/platform-provisioner/charts/provisioner-config-local/config/pp-*.yaml</i>.
-        See
+        Note: Test reference path for files <i>~/github/platform-provisioner/charts/provisioner-config-local/config/pp-*.yaml</i>. See
         <a href="https://github.com/tibco/platform-provisioner-ui/tree/main/provisioner-webui/docs">readme</a>.
       </small>
       <pre class="force-break" v-if="referenceResult !== ''">{{ referenceResult }}</pre>
     </div>
   </div>
+  <Dialog v-model:visible="showRunConfirm" header="Confirm Pipeline Run" :modal="true" :closable="true" :style="{ width: yamlChanges.hasChanges ? '920px' : '480px' }">
+    <div class="run-confirm-content">
+      <p>Are you sure you want to run this pipeline?</p>
+      <div class="run-confirm-details">
+        <div class="run-confirm-item">
+          <span class="run-confirm-label">Account</span>
+          <span class="run-confirm-value">
+            {{ deployParams.account }}
+            <span class="run-confirm-desc" v-if="store.accountDescription">({{ store.accountDescription }})</span>
+          </span>
+        </div>
+        <div class="run-confirm-item">
+          <span class="run-confirm-label">Region</span>
+          <span class="run-confirm-value">{{ deployParams.region }}</span>
+        </div>
+        <div class="run-confirm-item">
+          <span class="run-confirm-label">Pipeline</span>
+          <span class="run-confirm-value">{{ deployParams.pipeline }}</span>
+        </div>
+        <div class="run-confirm-item" v-if="route.query.title">
+          <span class="run-confirm-label">Recipe</span>
+          <span class="run-confirm-value">{{ route.query.title }}</span>
+        </div>
+      </div>
+      <RunConfirmChanges :changes="yamlChanges" />
+    </div>
+    <template #footer>
+      <Button severity="secondary" @click="showRunConfirm = false">Cancel</Button>
+      <Button severity="success" @click="confirmDeploy">
+        <i class="bi bi-check-lg" />
+        Run
+      </Button>
+    </template>
+  </Dialog>
 </template>
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from "vue";
+import { ref, toRaw, watch, computed, onMounted } from "vue";
 import { timer } from "rxjs";
 import { dump } from "js-yaml";
 import { toast } from "vue3-toastify";
 import _ from "lodash";
 import JsonEditorVue from "json-editor-vue3";
 import yamlEditorContainer from "../components/yamlEditor/yamlEditor.vue";
+import RunConfirmChanges from "@/components/RunConfirmChanges.vue";
 import utils from "../utils";
 import type { PIPELINE_EDITOR_TYPE } from "@/types/pipeline";
 import { useMainStore } from "@/stores/store";
+import { computeYamlChanges, type YamlDiffResult } from "@/changeTracker";
+import { useRoute } from "vue-router";
 import Button from "primevue/button";
-import InputGroup from 'primevue/inputgroup';
-import InputGroupAddon from 'primevue/inputgroupaddon';
-import InputText from 'primevue/inputtext';
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import Tabs from "primevue/tabs";
+import TabList from "primevue/tablist";
+import Tab from "primevue/tab";
+import TabPanels from "primevue/tabpanels";
+import TabPanel from "primevue/tabpanel";
 import type { YAML_EDITOR_CONTENT, YAML_VIEW_PROP_TYPES } from "@/types/props";
 
 const store = useMainStore();
+const route = useRoute();
 
 const props = withDefaults(defineProps<YAML_VIEW_PROP_TYPES>(), {
   isInValid: false,
-  pipelineGroups: () => ([]),
+  pipelineGroups: () => []
 });
 
 const jsonEditorOptions = {
@@ -113,7 +148,7 @@ const jsonEditorOptions = {
   mainMenuBar: false,
   navigationBar: false
 };
-let currentEditor = "yaml";
+const currentEditor = ref("yaml");
 
 // reactive data
 const isDev = ref(false);
@@ -136,7 +171,19 @@ const openStatusLink = () => {
   const url = `/status?account=${deployParams.value.account}&action=pipeline`;
   utils.openNewTab(url);
 };
+const showRunConfirm = ref(false);
+const yamlChanges = ref<YamlDiffResult>({ guiEnvChanges: [], otherDiffText: "", hasChanges: false, uploadedFileNames: {} });
 const onPipelineDeploy = () => {
+  yamlChanges.value = computeYamlChanges(
+    toRaw(store.originalRecipeContent),
+    toRaw(store.yamlEditorContent),
+    props.pipelineGroups,
+    toRaw(store.uploadedFileNames)
+  );
+  showRunConfirm.value = true;
+};
+const confirmDeploy = () => {
+  showRunConfirm.value = false;
   utils.deployPipeline(deployParams.value, yamlEditorContent.value);
 };
 const copyRestUrl = () => {
@@ -152,11 +199,11 @@ const copyJson = () => {
   if (navigator && navigator.clipboard) {
     let content: string;
     // for PCP-8976, copy textarea payload content only
-    const jsonData = yamlEditorContent.value
-    if (currentEditor === "json") {
+    const jsonData = yamlEditorContent.value;
+    if (currentEditor.value === "json") {
       content = JSON.stringify(jsonData, null, 2);
     } else {
-      content = dump(jsonData,{
+      content = dump(jsonData, {
         lineWidth: -1
       });
     }
@@ -171,13 +218,19 @@ const onTestReference = () => {
   referenceResult.value = _.get(yamlEditorContent.value, referencePath.value?.trim());
 };
 const activeEditor = (editorType: string) => {
-  currentEditor = editorType;
+  currentEditor.value = editorType;
   timer(300).subscribe(() => {
     if (editorType === "yaml") {
       yamlEditor.value?.editor.resize(true);
     }
     if (editorType === "json") {
-      jsonEditor.value?.editor.aceEditor.setReadOnly(true);
+      const aceEditor = jsonEditor.value?.editor.aceEditor;
+      if (aceEditor) {
+        const monoFont = getComputedStyle(document.documentElement).getPropertyValue("--font-family-mono").trim();
+        aceEditor.setReadOnly(true);
+        aceEditor.setOption("fontFamily", monoFont);
+        aceEditor.setOption("fontSize", 13);
+      }
       jsonEditor.value?.editor.resize(true);
     }
   });
@@ -190,62 +243,91 @@ onMounted(() => {
   });
 });
 
-watch(() => props.pipelineGroups?.[0]?.options?.[0]?.reference, (newVal) => {
-  referencePath.value = newVal;
-}, { deep: true });
-
+watch(
+  () => props.pipelineGroups?.[0]?.options?.[0]?.reference,
+  (newVal) => {
+    referencePath.value = newVal;
+  },
+  { deep: true }
+);
 </script>
 <style lang="less" scoped>
-.rest-url {
-  margin-bottom: 20px;
-  .p-inputgroupaddon {
-    font-size: 0.75rem;
-  }
-  input.p-inputtext {
-    font-size: 0.75rem;
-    padding: 0 10px;
-  };
-  button:disabled {
-    cursor: not-allowed;
-  }
-}
 #yaml-view {
+  .rest-url {
+    .rest-url-label {
+      display: block;
+      font-weight: 500;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .rest-url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .rest-url-input {
+      flex: 1;
+      font-family: var(--font-family-mono);
+      font-size: 0.8125rem;
+    }
+  }
+
+  .form-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 0;
+  }
+
   .test-reference {
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+
     .test-reference-search {
       display: flex;
-      align-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
       justify-content: space-between;
-      input {
-        width: calc(100% - 200px);
-        padding: 0 5px;
-        font-size: 0.75rem;
-      }
     }
+
     small {
       display: block;
-      margin: 10px 0;
-      color: var(--p-gray-400);
-      i {
-        background: var(--p-gray-200);
-        padding: 2px 6px;
-        font-weight: 500;
-        border-radius: 3px;
+      margin: 8px 0;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+
+      a {
+        color: var(--primary-color);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
       }
     }
+
     pre {
       max-height: 500px;
-      padding-bottom: 30px;
-      font-size: 0.75rem;
+      margin-top: 8px;
+      padding: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
     }
   }
-  #editorsTab .nav-link {
-    z-index: 1;
-    position: relative;
-  }
-  #yamlEditor {
-    border: 1px solid #dee2e6;
+
+  #yaml-editor-container {
+    border: 1px solid var(--border-color);
     border-top: 0;
   }
+
   #jsonEditor {
     margin-bottom: 10px;
     height: calc(100vh - 400px);
@@ -253,23 +335,22 @@ watch(() => props.pipelineGroups?.[0]?.options?.[0]?.reference, (newVal) => {
     :deep(.container) {
       height: calc(100% - 25px);
       padding: 0;
+
       .jsoneditor {
-        border-color: #dee2e6;
-        top: -1px;
+        border: 1px solid var(--border-color);
+        border-top: 0;
       }
-      .ace-jsoneditor {
-        font-size: 0.75rem !important;
+
+      .ace-jsoneditor,
+      .ace-jsoneditor .ace_editor {
+        font-family: var(--font-family-mono) !important;
+        font-size: 0.8125rem !important;
       }
-    }
-  }
-  .form-buttons {
-    margin-top: 10px;
-    margin-bottom: 0.5rem;
-    button,
-    a {
-      margin-right: 10px;
-      &:disabled {
-        cursor: not-allowed;
+
+      // Align gutter padding with YAML editor
+      .ace_gutter {
+        padding-left: 4px;
+        padding-right: 8px;
       }
     }
   }

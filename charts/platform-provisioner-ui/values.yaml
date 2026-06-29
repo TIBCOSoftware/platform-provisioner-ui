@@ -1,7 +1,16 @@
 #
-# Copyright © 2024. Cloud Software Group, Inc.
-# This file is subject to the license terms contained
-# in the license file that is distributed with this file.
+# Copyright © 2025. Cloud Software Group, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 
 # Default values for platform-provisioner-ui.
@@ -11,9 +20,10 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/tibcosoftware/platform-provisioner/platform-provisioner-ui
+  repository: ghcr.io/tibcosoftware/platform-provisioner-ui/platform-provisioner-ui
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
+  # Leave empty so `helm install` pulls the release matching appVersion (reproducible).
   tag: ""
 
 imagePullSecret:
@@ -84,6 +94,51 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+# Gateway (Gateway API): https://gateway-api.sigs.k8s.io/api-types/gateway/
+# Map of named Gateway resources. Each enabled key creates one Gateway named
+# {fullname}-{key} (override via .name).
+gateways: {}
+  # default:
+  #   enabled: true
+  #   # name: ""        # defaults to "<fullname>-<key>"
+  #   annotations: {}
+  #   labels: {}        # merged on top of the standard chart labels
+  #   # spec api: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewaySpec
+  #   spec:
+  #     gatewayClassName: istio
+  #     listeners:
+  #       - name: http
+  #         port: 80
+  #         protocol: HTTP
+  #         allowedRoutes:
+  #           namespaces:
+  #             from: All
+
+# HTTPRoute (Gateway API): https://gateway-api.sigs.k8s.io/api-types/httproute/
+# Map of named HTTPRoute resources. Each enabled key creates one HTTPRoute named
+# {fullname}-{key} (override via .name).
+httpRoutes: {}
+  # primary:
+  #   enabled: true
+  #   # name: ""        # defaults to "<fullname>-<key>"
+  #   annotations: {}
+  #   labels: {}        # merged on top of the standard chart labels
+  #   # spec api: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.HTTPRouteSpec
+  #   spec:
+  #     parentRefs:
+  #       - name: my-gateway
+  #         namespace: gateway-system
+  #     hostnames:
+  #       - platform-provisioner.example.com
+  #     rules:
+  #       - matches:
+  #           - path:
+  #               type: PathPrefix
+  #               value: /
+  #         backendRefs:
+  #           - name: platform-provisioner-ui
+  #             port: 8080
+
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -152,6 +207,13 @@ guiConfig:
   dataConfigMapName: ""
   tektonAPIVersion: "v1"
   pipelinesCleanUpEnabled: "false"
+  # Form auth (disabled by default, enable in staging via ArgoCD inline values)
+  formAuthEnabled: "false"
+  formAuthUser: ""
+  formAuthPassword: ""
+  # MCP server (enabled by default, set to "false" to disable)
+  mcpEnabled: "true"
+  mcpJwtSecret: ""
 
 sso:
   # for all day's work

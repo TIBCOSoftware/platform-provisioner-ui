@@ -1,7 +1,16 @@
 /*
  * Copyright © 2025. Cloud Software Group, Inc.
- * This file is subject to the license terms contained
- * in the license file that is distributed with this file.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 'use strict';
@@ -11,13 +20,15 @@ const configMap = require('../configmap');
 
 const k8s = require('../k8s');
 const utils = require('../utils');
-const { handelError } = require('../utils');
+const { handleError } = require('../utils');
 
 const fs = require('fs');
 const semver = require("semver");
+const crypto = require('crypto');
 
 const isDev = process.env.NODE_ENV === 'development';
 const isOnPrem = process.env.ON_PREM_MODE === 'true';
+const formAuthEnabled = process.env.FORM_AUTH_ENABLED === 'true';
 
 const router = new Router({
   prefix: '/cic2-ws/v1'
@@ -31,7 +42,7 @@ function getSsoUser(ctx) {
   if (ctx.session && ctx.session.passport && ctx.session.passport.user) {
     return ctx.session.passport.user;
   }
-  if (isDev || isOnPrem) {
+  if ((isDev || isOnPrem) && !formAuthEnabled) {
     const mockUserData = configMap.getMockUser();
     const mockUser = mockUserData["mockUser"];
     ctx.session.passport = {
@@ -40,6 +51,17 @@ function getSsoUser(ctx) {
     return ctx.session.passport.user;
   }
   return null;
+}
+
+/**
+ * Generate ETag for content caching (RFC 7232)
+ * Uses MD5 for fast hash generation - security is not required for ETags
+ */
+function generateEtag(content) {
+  return `"${crypto
+    .createHash('md5')
+    .update(JSON.stringify(content))
+    .digest('hex')}"`;
 }
 
 /**
@@ -115,7 +137,8 @@ router.get('/ui-properties', async (ctx, next) => {
     'ON_PREM_MODE', 'PIPELINES_CLEAN_UP_ENABLED', 'NODE_ENV',
     'GIT_BRANCH', 'GIT_COMMIT', 'BUILD_TIME', 'DOCKERFILE',
     'PIPELINE_TEMPLATE_LABEL_KEY_ACCOUNT', 'PIPELINE_TEMPLATE_LABEL_KEY_ACTION',
-    'PIPELINE_TEMPLATE_LABEL_KEY_CREATE_BY', 'PIPELINE_TEMPLATE_LABEL_KEY_NOTE'
+    'PIPELINE_TEMPLATE_LABEL_KEY_CREATE_BY', 'PIPELINE_TEMPLATE_LABEL_KEY_NOTE',
+    'ENABLE_UNRELEASED_FEATURE'
   ];
   const envVarsList = {};
   for (let key of envVariables) {
@@ -136,6 +159,13 @@ router.get('/file-content', async (ctx, next) => {
     } else {
       pageContent = configMap.getPageContent(fileName);
     }
+    const etag = generateEtag(pageContent);
+    const ifNoneMatch = ctx.headers['if-none-match'];
+    if (ifNoneMatch === etag) {
+      ctx.status = 304;
+      return;
+    }
+    ctx.set('ETag', etag);
     ctx.status = 200;
     ctx.body = pageContent || {};
   } else {
@@ -288,7 +318,7 @@ secureRouter.get('/taskruns/:taskRunId', async (ctx, next) => {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getTaskRun');
+    handleError(ctx, e, 'Error getTaskRun');
     await next();
   }
 });
@@ -308,7 +338,7 @@ secureRouter.get('/pipelineruns/:pipelineRunId', async (ctx, next) => {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getPipelineRun');
+    handleError(ctx, e, 'Error getPipelineRun');
     await next();
   }
 });
@@ -320,7 +350,7 @@ secureRouter.post('/pipelineruns/:pipelineRunId', async (ctx, next) => {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error stopPipelineRun');
+    handleError(ctx, e, 'Error stopPipelineRun');
     await next();
   }
 });
@@ -332,7 +362,7 @@ secureRouter.delete('/pipelineruns/:pipelineRunId', async (ctx, next) => {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error deletePipelineRun');
+    handleError(ctx, e, 'Error deletePipelineRun');
     await next();
   }
 });
@@ -345,19 +375,26 @@ secureRouter.get('/pipelineruns', async (ctx, next) => {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getPipelineRuns');
+    handleError(ctx, e, 'Error getPipelineRuns');
     await next();
   }
 });
 
 secureRouter.get('/pod/:pod/:container/log', async (ctx, next) => {
   try {
-    const result = await k8s.getContainerLog(ctx.params);
+    const follow = ctx.query?.follow?.toLowerCase() === 'true';
+    const tailLines = ctx.query?.tailLines ? parseInt(ctx.query.tailLines, 10) : undefined;
+    const result = await k8s.getContainerLog(ctx.params, follow, tailLines);
     ctx.status = 200;
     ctx.body = result;
-    await next();
+    if (follow) {
+      ctx.set('Content-Type', 'text/plain');
+      ctx.set('Transfer-Encoding', 'chunked');
+    } else {
+      await next();
+    }
   } catch(e) {
-    handelError(ctx, e, 'Error getContainerLog');
+    handleError(ctx, e, 'Error getContainerLog');
     await next();
   }
 });
@@ -370,7 +407,7 @@ async function callK8sApi(ctx, next, api) {
     ctx.body = result;
     await next();
   } catch(e) {
-    handelError(ctx, e, `Error callK8sApi: ${api.name}`);
+    handleError(ctx, e, `Error callK8sApi: ${api.name}`);
     await next();
   }
 }
@@ -390,4 +427,4 @@ secureRouter.post('/charts/delete', async (ctx, next) => {
   await callK8sApi(ctx, next, k8s.chartsDelete);
 });
 
-module.exports = { public: router, secure: secureRouter };
+module.exports = { public: router, secure: secureRouter, generateEtag, getSsoUser };

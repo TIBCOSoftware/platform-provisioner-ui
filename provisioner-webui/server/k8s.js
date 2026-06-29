@@ -1,7 +1,16 @@
 /*
  * Copyright © 2025. Cloud Software Group, Inc.
- * This file is subject to the license terms contained
- * in the license file that is distributed with this file.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 const k8s = require('@kubernetes/client-node');
@@ -71,7 +80,7 @@ const getAxiosResponse = async function(options) {
   }
 };
 
-const get = async function(url) {
+const get = async function(url, responseType = 'json') {
   loadK8sOptions();
   const options = _.merge({}, opts, {
     method: 'GET',
@@ -80,7 +89,7 @@ const get = async function(url) {
       "Content-Type": 'application/json'
     },
     httpsAgent: httpsAgent(),
-    responseType: 'json' // automatically parse string to JSON
+    responseType: responseType // automatically parse string to JSON
   });
   return await getAxiosResponse(options);
 };
@@ -133,14 +142,30 @@ const deleteRequest = async function(url) {
 };
 
 const getPipelineRuns = async function(paramsObj, apiParams) {
-  let response;
-  if(apiParams && apiParams.labelSelector) {
-    response = await get(`/apis/tekton.dev/${TEKTON_API_VERSION}/namespaces/${namespace}/pipelineruns?labelSelector=${apiParams.labelSelector}&limit=500`);
-  } else {
-    response = await get(`/apis/tekton.dev/${TEKTON_API_VERSION}/namespaces/${namespace}/pipelineruns`);
-  }
-  cleanItemsScript(response.items);
-  return response;
+  let allItems = [];
+  let continueToken = '';
+  const base = `/apis/tekton.dev/${TEKTON_API_VERSION}/namespaces/${namespace}/pipelineruns`;
+
+  do {
+    let url = apiParams?.labelSelector
+      ? `${base}?labelSelector=${encodeURIComponent(apiParams.labelSelector)}&limit=500`
+      : `${base}?limit=500`;
+    if (continueToken) {
+      url += `&continue=${encodeURIComponent(continueToken)}`;
+    }
+    const response = await get(url);
+    allItems = allItems.concat(response.items || []);
+    continueToken = response.metadata?.continue || '';
+  } while (continueToken);
+
+  // Sort by creation time descending so the newest items come first
+  allItems.sort((a, b) =>
+    new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)
+  );
+
+  allItems.forEach(item => stripPipelineRunFields(item));
+  cleanItemsScript(allItems);
+  return { items: allItems };
 };
 
 const loadPayload = async function(paramsObj, apiParams) {
@@ -165,6 +190,7 @@ const getTaskRun = async function(paramsObj, apiParams) {
 
 const getPipelineRun = async function(paramsObj, apiParams) {
   const response = await get(`/apis/tekton.dev/${TEKTON_API_VERSION}/namespaces/${namespace}/pipelineruns/${apiParams.pipelineRunId}`);
+  stripPipelineRunFields(response);
   cleanItemScript(response);
   return response;
 };
@@ -204,8 +230,32 @@ const getNamespace = async function() {
   return await get(`/api/v1/namespaces/${namespace}`);
 };
 
+// Strip large unused fields from PipelineRun responses to reduce payload size.
+// Scoped to PipelineRun only — TaskRun and other resources are not affected.
+function stripPipelineRunFields(item) {
+  delete item.spec;
+  if (item.metadata) {
+    delete item.metadata.managedFields;
+    delete item.metadata.annotations;
+  }
+  if (item.status) {
+    delete item.status.provenance;
+    if (item.status.pipelineSpec) {
+      [item.status.pipelineSpec.tasks, item.status.pipelineSpec.finally].forEach(list => {
+        if (list) {
+          list.forEach(task => {
+            if (task.params) {
+              task.params = task.params.filter(p => p.name !== 'input');
+            }
+          });
+        }
+      });
+    }
+  }
+}
+
 function cleanItemScript(item) {
-  if(item.status && item.status && item.status.taskSpec && item.status.taskSpec.steps) {
+  if(item.status && item.status.taskSpec && item.status.taskSpec.steps) {
     item.status.taskSpec.steps.forEach(step => {
       if(step.script) {
         step.script = '';
@@ -233,6 +283,37 @@ const createPipelineRuns = async function(data) {
 };
 
 /**
+ * Sanitize an arbitrary string into a valid Kubernetes label value.
+ *
+ * PCP-19684: a user-supplied `note` was previously written to a label verbatim,
+ * so a note containing spaces or other label-invalid characters made the k8s API
+ * reject the whole PipelineRun with a 422. This applies the same sanitization the
+ * `create-by` label already uses, in one shared place so the two cannot drift.
+ *
+ * K8s label values must be empty OR be at most 63 characters, contain only
+ * alphanumerics, '-', '_' or '.', and begin and end with an alphanumeric:
+ * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+ *
+ * Order matters: truncate before stripping the leading/trailing separators so a
+ * cut that lands on a '-'/'_'/'.' cannot leave an invalid trailing character. A
+ * falsy input (and an input that sanitizes away to nothing) yields '', which is
+ * itself a valid label value.
+ *
+ * @param {*} value the raw value to sanitize
+ * @returns {string} a label-safe value (possibly empty)
+ */
+const sanitizeLabelValue = function(value) {
+  if (!value) {
+    return '';
+  }
+  return String(value)
+    .replace(/[^a-zA-Z0-9-_.]/g, '-') // replace invalid chars with '-'
+    .substring(0, 63)                 // enforce the 63-char label limit
+    .replace(/^[-_.]+/g, '')          // must start with an alphanumeric
+    .replace(/[-_.]+$/g, '');         // must end with an alphanumeric
+};
+
+/**
  * Before run the task, change the tekton metadata
  * To fix CPIR-943 add the created-by label for a task
  * @param {*} data
@@ -251,7 +332,9 @@ const changeMetadata = function(data, account, action, name, createdBy) {
     data.spec.params.filter(param => param.name === 'input')
       .map(param => {
         const inputYamlJson = JSON.parse(param.value);
-        data.metadata.labels[`${process.env.PIPELINE_TEMPLATE_LABEL_KEY_NOTE}`] = inputYamlJson?.meta?.guiEnv?.note || '';
+        // PCP-19684: sanitize the user-supplied note so a value with spaces or
+        // other label-invalid characters can't make the k8s API reject the run.
+        data.metadata.labels[`${process.env.PIPELINE_TEMPLATE_LABEL_KEY_NOTE}`] = sanitizeLabelValue(inputYamlJson?.meta?.guiEnv?.note);
       });
   }
   if (name) {
@@ -270,13 +353,8 @@ const changeMetadata = function(data, account, action, name, createdBy) {
       }
     }
 
-    // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-    // sanitize the value
-    createdByName = createdByName.replace(/[^a-zA-Z0-9-_.]/g, '-').replace(/^[-_.]+/g, '').replace(/[-_.]+$/g, '');
-    if (createdByName.length > 63) {
-      createdByName = createdByName.substring(0, 63);
-    }
-    data.metadata.labels[`${process.env.PIPELINE_TEMPLATE_LABEL_KEY_CREATE_BY}`] = createdByName;
+    // sanitize the value to a valid k8s label (shared with the note label)
+    data.metadata.labels[`${process.env.PIPELINE_TEMPLATE_LABEL_KEY_CREATE_BY}`] = sanitizeLabelValue(createdByName);
   }
 
   // change the task name to make it unique
@@ -285,6 +363,55 @@ const changeMetadata = function(data, account, action, name, createdBy) {
   } else {
     data.metadata.name = [data.metadata.name, account, new Date().getTime()].join('-');
   }
+};
+
+/**
+ * Safely extract a human-readable message from an error thrown anywhere in the
+ * taskrun path, without ever throwing while doing so.
+ *
+ * Errors reaching the taskrun catch blocks come in several shapes:
+ *   - axios / k8s API errors: the real reason lives in `e.response.data`, which
+ *     for the Kubernetes API is a Status object ({ message, reason, code });
+ *     surface that first so the true failure is visible.
+ *   - legacy callers that throw `{ error: { message } }`.
+ *   - plain `Error` objects (`e.message`).
+ *
+ * PCP-19676: the previous code read `e.error.message` unguarded, so a plain
+ * Error (where `e.error` is undefined) made the extraction itself throw
+ * "Cannot read properties of undefined (reading 'message')" — masking the real
+ * error and making the failure undebuggable.
+ *
+ * @param {*} e the caught error (any shape, may be null/undefined)
+ * @returns {string} a non-empty error message
+ */
+const normalizeError = function(e) {
+  if (!e) {
+    return 'Unknown error';
+  }
+  const apiBody = e.response && e.response.data;
+  if (apiBody) {
+    if (typeof apiBody === 'string' && apiBody.trim()) {
+      return apiBody;
+    }
+    if (apiBody.message) {
+      return apiBody.message;
+    }
+    if (apiBody.reason) {
+      return apiBody.reason;
+    }
+    // Last resort: surface the raw API body so a rejection without a top-level
+    // message/reason is still visible rather than swallowed. Guard the
+    // serialization so a non-serializable body (e.g. circular) can never throw.
+    try {
+      const serialized = JSON.stringify(apiBody);
+      if (serialized && serialized !== '{}') {
+        return serialized;
+      }
+    } catch (_err) {
+      // ignore and fall through to the generic message
+    }
+  }
+  return (e.error && e.error.message) || e.message || 'Unknown error';
 };
 
 const callTaskRun = async function(body, template, action, paramsArray, nameSuffix) {
@@ -315,7 +442,7 @@ const callTaskRun = async function(body, template, action, paramsArray, nameSuff
     cleanItemScript(response);
     return response;
   } catch (e) {
-    const error = e.error.message || e.message || "Unknown error";
+    const error = normalizeError(e);
     console.error("Error calling taskrun: " + action, error);
     throw new Error(error);
   }
@@ -351,12 +478,16 @@ const savePayload = async function(paramsObj, apiParams) {
 
 const runPipeline = async function(paramsObj, apiParams, tenantAccounts) {
   const templates = await getPipelineTemplates(tenantAccounts);
-  if (!templates[paramsObj.aws.pipeline]) {
-    console.error(`The pipeline template ${paramsObj.aws.pipeline} is not found`);
+  const pipelineName = paramsObj.aws.pipeline;
+  // Fail with a clear, actionable message instead of letting the lookup below
+  // throw a cryptic "Cannot read properties of undefined (reading 'pipelineRun')"
+  // (PCP-19676 — this masked the true cause when a template was not visible).
+  if (!templates[pipelineName] || !templates[pipelineName]['pipelineRun']) {
+    throw new Error(`The pipeline template '${pipelineName}' is not found`);
   }
 
   try {
-    let template = templates[paramsObj.aws.pipeline]['pipelineRun'];
+    let template = templates[pipelineName]['pipelineRun'];
     const content = paramsObj.content;
     if (content && paramsObj.createdBy) {
       content.createdBy = paramsObj.createdBy;
@@ -368,7 +499,7 @@ const runPipeline = async function(paramsObj, apiParams, tenantAccounts) {
       }
     ]);
   } catch (error) {
-    throw new Error(error.message);
+    throw new Error(normalizeError(error));
   }
 
 };
@@ -386,10 +517,16 @@ const chartsDelete = async function(paramsObj) {
   return await callCreateTaskrun(paramsObj, 'delete-charts', 'delete');
 };
 
-const getContainerLog = async function(params) {
+const getContainerLog = async function(params, follow, tailLines) {
   const pod = params.pod;
   const container = params.container;
-  return await get(`/api/v1/namespaces/${namespace}/pods/${pod}/log?container=${container}`);
+  follow = follow || false;
+  const responseType = follow ? 'stream' : 'json';
+  let url = `/api/v1/namespaces/${namespace}/pods/${pod}/log?container=${container}&follow=${follow}`;
+  if (tailLines) {
+    url += `&tailLines=${tailLines}`;
+  }
+  return await get(url, responseType);
 };
 
 function isTemplateAccessible(template, account) {
@@ -491,5 +628,9 @@ module.exports = {
   eksCreate: eksCreate,
   chartsUpdate: chartsUpdate,
   chartsDelete: chartsDelete,
-  getContainerLog: getContainerLog
+  getContainerLog: getContainerLog,
+  changeMetadata: changeMetadata,
+  isTemplateAccessible: isTemplateAccessible,
+  stripPipelineRunFields: stripPipelineRunFields,
+  normalizeError: normalizeError
 };

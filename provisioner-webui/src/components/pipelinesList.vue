@@ -1,44 +1,55 @@
 <!--
   - Copyright © 2025. Cloud Software Group, Inc.
-  - This file is subject to the license terms contained
-  - in the license file that is distributed with this file.
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
   -->
 
 <template>
   <div id="pipeline-list">
-    <span class="pv-error" v-if="pipelineList.length === 0">No pipelines found. </span>
+    <span class="pv-error" v-if="loaded && pipelineList.length === 0">No pipelines found. </span>
     <div class="pipeline-field-container pv-field-horizontal" v-if="pipelineList.length > 0">
       <div class="label-title">Pipelines</div>
       <div class="pipeline-field">
-        <select class="form-select" v-if="pipelineList.length > 1" @change="onPipelineChange($event)">
-          <option v-bind:value="opt.id" v-for="opt in pipelineList" v-bind:key="opt.id">
-            {{ opt.name + " [" + opt.id + "]" + formatVersion(opt.pipelineRun.apiVersion) }}
-          </option>
-        </select>
+        <Select v-if="pipelineList.length > 1" :modelValue="selectedPipelineId" :options="pipelineSelectOptions" optionLabel="label" optionValue="value" @change="(e: any) => onPipelineChange(e.value)" class="pipeline-select" />
         <div class="pipelines" v-if="pipelineList.length === 1">
-          <input type="text" disabled :value="pipelineList[0].name + ' [' + pipelineList[0].id + ']'" />
+          <InputText disabled :modelValue="pipelineList[0].name + ' [' + pipelineList[0].id + ']'" class="w-full" />
         </div>
         <div class="pipelines" v-if="pipelineList.length < 1">
           <span class="pv-error">No pipelines found.</span>
         </div>
-        <Button label="Description" severity="info" icon="bi bi-card-text" @click="showPipelineDescription" />
-        <Button label="Preview YAML" severity="info" icon="bi bi-filetype-yml"
-                v-if="!isShowYamlInPage" @click="showYamlEditor()" />
+        <Button severity="info" @click="showPipelineDescription">
+          <i class="bi bi-card-text" />
+          Description
+        </Button>
+        <Button severity="info" v-if="!isShowYamlInPage" @click="showYamlEditor()">
+          <i class="bi bi-filetype-yml" />
+          Preview YAML
+        </Button>
       </div>
     </div>
 
     <pipelines-options :is-show-yaml-in-page="isShowYamlInPage" :is-in-valid="isInValid" :pipeline-groups="pipelineGroups"></pipelines-options>
-
   </div>
   <Drawer
     v-model:visible="visiblePipelineDescription"
-    :header="selectedPipelineName"
+    :style="{ width: isShowYamlInPage ? 'calc(50vw)' : '50%' }"
+    :position="drawerPosition as 'left' | 'right'"
     :blockScroll="true"
-    :position="drawerPosition"
-    :pt="{ mask: isShowYamlInPage ? { class: 'modal-mask-with-yaml' } : {} }"
-    class="pipeline-description">
-    <div class="description" v-if="pipelineDescription">
-      <VMarkdownView :content="pipelineDescription"></VMarkdownView>
+    :class="{ 'modal-mask-with-yaml': isShowYamlInPage }"
+    class="pipeline-description"
+    :header="selectedPipelineName"
+  >
+    <div class="description markdown-content" v-if="pipelineDescription">
+      <MarkdownView :content="pipelineDescription" />
     </div>
   </Drawer>
 </template>
@@ -46,10 +57,12 @@
 <script setup lang="ts">
 import Drawer from "primevue/drawer";
 import Button from "primevue/button";
-import { onMounted, ref } from "vue";
+import Select from "primevue/select";
+import InputText from "primevue/inputtext";
+import { onMounted, ref, computed } from "vue";
 import utils from "@/utils";
 import _ from "lodash";
-import { VMarkdownView } from "vue3-markdown";
+import MarkdownView from "@/components/MarkdownView.vue";
 import PipelinesOptions from "./pipelinesOptions.vue";
 import type { PIPELINE, PIPELINES } from "@/types/pipeline";
 import { useMainStore } from "@/stores/store";
@@ -65,12 +78,21 @@ const props = defineProps<PIPELINE_LIST_PROP_TYPES>();
 
 // reactive data
 const pipelineList = ref<PIPELINE[]>([]);
+const loaded = ref(false);
 const pipelineDescription = ref("");
 const visiblePipelineDescription = ref(false);
 const selectedPipelineName = ref("");
+const selectedPipelineId = ref<string | null>(null);
+
+const pipelineSelectOptions = computed(() =>
+  pipelineList.value.map((opt) => ({
+    label: opt.name + " [" + opt.id + "]" + formatVersion(opt.pipelineRun.apiVersion),
+    value: opt.id
+  }))
+);
 
 // for Drawer
-const drawerPosition = ref('right');
+const drawerPosition = ref("right");
 
 const showYamlEditor = () => {
   store.setIsShowingYamlEditor(true);
@@ -78,34 +100,40 @@ const showYamlEditor = () => {
 
 const showPipelineDescription = () => {
   visiblePipelineDescription.value = true;
-  drawerPosition.value = props.isShowYamlInPage ? 'left' : 'right';
+  drawerPosition.value = props.isShowYamlInPage ? "left" : "right";
 };
 
 // Get pipelines data
 const getPipelines = () => {
-  utils.httpGet("/cic2-ws/v1/pipelines").then((pipelines: PIPELINES) => {
-    if (_.isEmpty(pipelines)) {
-      console.error("No pipelines found");
-      return;
-    }
-
-    pipelineList.value = _(pipelines)
-      .mapValues((value, id: string) => _.merge({}, value, { id }))
-      .values()
-      .value();
-
-    let defaultPipeline = pipelineList.value[0];
-    const paramPipelineName = route.params.name;
-    if (paramPipelineName) {
-      const matchedPipeline = pipelineList.value.find((pipe) => pipe.id === paramPipelineName);
-      if (matchedPipeline) {
-        defaultPipeline = matchedPipeline;
-        pipelineList.value = [matchedPipeline];
+  utils.httpGet("/cic2-ws/v1/pipelines").then(
+    (pipelines: PIPELINES) => {
+      loaded.value = true;
+      if (_.isEmpty(pipelines)) {
+        console.error("No pipelines found");
+        return;
       }
-    }
 
-    emitPipelineChange(defaultPipeline);
-  });
+      pipelineList.value = _(pipelines)
+        .mapValues((value, id: string) => _.merge({}, value, { id }))
+        .values()
+        .value();
+
+      let defaultPipeline = pipelineList.value[0];
+      const paramPipelineName = route.params.name;
+      if (paramPipelineName) {
+        const matchedPipeline = pipelineList.value.find((pipe) => pipe.id === paramPipelineName);
+        if (matchedPipeline) {
+          defaultPipeline = matchedPipeline;
+          pipelineList.value = [matchedPipeline];
+        }
+      }
+
+      emitPipelineChange(defaultPipeline);
+    },
+    () => {
+      loaded.value = true;
+    }
+  );
 };
 
 onMounted(() => {
@@ -115,19 +143,19 @@ onMounted(() => {
 const emitPipelineChange = (pipeline: PIPELINE) => {
   pipelineDescription.value = pipeline.description || "";
   selectedPipelineName.value = pipeline.name || "";
+  selectedPipelineId.value = pipeline.id;
   store.setSelectedPipeline(pipeline);
 };
 
 // Handle option change
-const onPipelineChange = (event: Event) => {
-  const selectedPipelineId = (event.target as HTMLInputElement).value;
-  const selectedPipeline = _.find(pipelineList.value, (option) => option.id === selectedPipelineId);
+const onPipelineChange = (value: string) => {
+  const selectedPipeline = _.find(pipelineList.value, (option) => option.id === value);
   if (!selectedPipeline) {
     return;
   }
   emitPipelineChange(selectedPipeline);
 
-  const newUrl = `/pipelines/${selectedPipelineId}`;
+  const newUrl = `/pipelines/${value}`;
   window.history.replaceState({ path: newUrl }, "", newUrl);
 
   // Manually update the internal state of the router to synchronize route.path
@@ -142,42 +170,48 @@ const formatVersion = (apiVersion: string) => {
 #pipeline-list {
   .pipeline-field {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    .form-select,
+    gap: 0.75rem;
+    justify-content: space-between;
+
+    .pipeline-select,
     .pipelines {
       display: flex;
       flex: 1;
     }
+
     button {
-      margin-left: 15px;
+      margin-left: 8px;
+      white-space: nowrap;
     }
-  }
-  .pipelines {
-    input {
-      border: 1px solid #d1d1d1;
-      padding: 6px 12px;
-      border-radius: 4px;
-      background-color: #f5f5f5;
-      width: 100%;
-    }
+
   }
 }
+
 .pipeline-description {
+  :deep(.p-drawer-content) {
+    display: flex;
+    flex-direction: column;
+  }
+
   .description {
-    border: 1px solid #ece8e8;
-    padding: 11px;
+    flex: 1;
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+
+    :deep(.markdown-body) {
+      flex: 1;
+    }
+
     :deep(pre) {
-      code {
-        background: unset;
-        color: unset;
-        font-family: unset;
-        font-size: 0.875rem;
-        text-shadow: unset;
-        &::selection {
-          background: #adccf2;
-        }
-      }
+      background: var(--code-bg-dark);
+      color: var(--code-text-light);
+      margin: 12px 0;
     }
   }
 }
