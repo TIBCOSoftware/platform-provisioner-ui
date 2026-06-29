@@ -15,7 +15,7 @@
 
 apiVersion: v2
 name: platform-provisioner-ui
-version: "1.0.17"
+version: "1.0.18"
 # appVersion == the published image version (its own line: ...1.10, 1.11, next 1.12.0).
 # Bump together with a v<appVersion> release tag, which builds that image.
 appVersion: "1.12.0"
