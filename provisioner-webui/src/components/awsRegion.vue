@@ -1,23 +1,31 @@
 <!--
   - Copyright © 2025. Cloud Software Group, Inc.
-  - This file is subject to the license terms contained
-  - in the license file that is distributed with this file.
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
   -->
 
 <template>
   <div class="pv-field-horizontal">
     <div class="label-title">Region</div>
     <div class="pipeline-field pipeline-field-region">
-      <select class="form-select" v-model="localRegion">
-        <option v-bind:value="opt" v-for="opt in options" v-bind:key="opt">{{ opt }}</option>
-      </select>
+      <Select v-model="localRegion" :options="selectOptions" optionLabel="label" optionValue="value" class="w-full" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import Select from "primevue/select";
 import menuContentService from "../services/menuContentService";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import type { RES_AWS_REGION } from "@/types/response";
 import { useMainStore } from "@/stores/store";
 import type { REGION_PROP_TYPES } from "@/types/props";
@@ -27,6 +35,8 @@ const props = defineProps<REGION_PROP_TYPES>();
 
 const options = ref<string[]>([]);
 const localRegion = ref<string>(props.region);
+
+const selectOptions = computed(() => options.value.map((opt) => ({ label: opt, value: opt })));
 
 onMounted(() => {
   menuContentService.getAWSRegions().then(

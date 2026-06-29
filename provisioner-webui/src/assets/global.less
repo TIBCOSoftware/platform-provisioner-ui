@@ -1,50 +1,112 @@
+/*
+ * Copyright © 2025. Cloud Software Group, Inc.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+body {
+  margin: 0;
+}
+
 .pv-status-view,
 .pv-doc-view,
 .pv-pipeline-view,
 .pv-error-view {
-  margin: 56px 40px 0;
+  margin: 60px 32px 0;
+
   h2 {
     font-size: 1.125rem;
+    font-weight: 600;
     margin: 0;
-    padding: 15px 0;
+    padding: 12px 0;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 768px) {
+    margin: 48px 16px 0;
+
+    h2 {
+      font-size: 1rem;
+    }
   }
 }
 .pv-field-horizontal {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  padding: 10px;
-  &:hover {
-    background: #f5f5f5;
-  }
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+
   .label-title {
-    width: 230px;
-    margin-right: 10px;
-    font-weight: 500;
+    width: 250px;
+    margin-right: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
   }
-  .pipeline-field-account, .pipeline-field-region {
+
+  .pipeline-field-account,
+  .pipeline-field-region {
     flex-direction: column;
     display: flex;
+    min-width: 400px;
   }
+
   .pipeline-field {
     flex: 1;
-    input, select {
-      font-size: 0.75rem;
-    }
   }
 }
-.pv-error, .msg-error {
-  // see the colors in bootstrap css v5.3.0: https://getbootstrap.com/docs/5.3/customize/color/
-  color: var(--bs-danger);
+
+.pv-error,
+.msg-error {
+  color: var(--danger-hover);
+  font-weight: 500;
+  padding: 8px 12px;
+  background: var(--danger-light);
+  border-left: 3px solid var(--danger-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
 }
+
 .msg-success {
-  color: var(--bs-success);
+  color: var(--success-hover);
+  font-weight: 500;
+  padding: 8px 12px;
+  background: var(--success-light);
+  border-left: 3px solid var(--success-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
 }
+
 .msg-warning {
-  color: var(--bs-warning);
+  color: var(--warning-hover);
+  font-weight: 500;
+  padding: 8px 12px;
+  background: var(--warning-light);
+  border-left: 3px solid var(--warning-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
 }
+
 .msg-info {
-  color: var(--bs-secondary-color);
+  color: var(--info-hover);
+  font-weight: 500;
+  padding: 8px 12px;
+  background: var(--info-light);
+  border-left: 3px solid var(--info-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
 }
 
 .force-break {
@@ -53,48 +115,910 @@
   overflow-wrap: break-word;
 }
 
-// override the PrimeVue's primary color
+// Design System Variables — Default theme: Ocean Blue (#F7FBFC #D6E6F2 #B9D7EA #769FCD)
 :root {
-  --bs-body-font-size: 0.875rem !important;
-  --p-primary-color: #42a5f5 !important;
-  --p-primary-hover-color: #42a5f5 !important;
-  --p-primary-active-color: #42a5f5 !important;
+  // Typography
+  --bs-body-font-size: 0.875rem;
+  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 
-  --p-button-padding-x: 0.45rem !important;
-  --p-button-padding-y: 0.325rem !important;
-  --p-inputtext-padding-y: 0.325rem !important;
-  --p-autocomplete-option-padding: 6px 10px !important;
-  .p-button {
-    font-size: var(--bs-body-font-size);
-  }
-  .p-autocomplete-input {
-    font-size: 0.75rem;
-    &:focus {
-      box-shadow: none !important;
+  // Palette
+  --palette-lightest: #F7FBFC;
+  --palette-lighter: #EAF4FB;
+  --palette-light: #D6E6F2;
+  --palette-medium: #B9D7EA;
+  --palette-blue: #769FCD;
+  --palette-navy: #2B4F72;
+  --navbar-bg: #59779a;
+
+  // Primary Colors (blue)
+  --primary-color: #769FCD;
+  --primary-hover: #5F8ABB;
+  --primary-light: #edf4fa;
+  --primary-dark: #2B4F72;
+
+  // Semantic Colors (info matches primary for consistent branding)
+  --success-color: #22C55E;
+  --success-hover: #16A34A;
+  --success-light: #F0FDF4;
+  --success-dark: #15803D;
+
+  --info-color: #769FCD;
+  --info-hover: #5F8ABB;
+  --info-light: #edf4fa;
+  --info-dark: #2B4F72;
+
+  --warning-color: #D4A055;
+  --warning-hover: #B8863E;
+  --warning-light: #FDF6ED;
+  --warning-dark: #7A5C2F;
+
+  --danger-color: #EF4444;
+  --danger-hover: #DC2626;
+  --danger-light: #FEF2F2;
+  --danger-dark: #B91C1C;
+
+  --secondary-color: #8EAEC8;
+  --secondary-hover: #2B4F72;
+  --secondary-light: #D6E6F2;
+  --secondary-dark: #2B4F72;
+
+  // Neutral Colors
+  --bg-primary: #ffffff;
+  --bg-secondary: #F7FBFC;
+  --bg-tertiary: #D6E6F2;
+  --border-color: #c3d7e6;
+  --text-primary: #2B4F72;
+  --text-secondary: #456B8A;
+  --text-muted: #8EAEC8;
+
+  // Code Block Colors
+  --code-bg-dark: #2B4F72;
+  --code-text-light: #F7FBFC;
+  --code-bg-light: var(--bg-secondary);
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(43, 79, 114, 0.06);
+  --shadow-md: 0 1px 3px rgba(43, 79, 114, 0.1);
+  --shadow-lg: 0 4px 6px rgba(43, 79, 114, 0.1);
+  --shadow-hover: 0 1px 3px rgba(43, 79, 114, 0.1);
+
+  // Border Radius
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  // Transitions
+  --transition-base: all 0.2s;
+  --transition-fast: all 0.15s;
+
+  // Z-index Scale
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+
+  // Component Specific
+  --yaml-editor-width: 700px;
+  --min-touch-target: 36px;
+
+  // Third-party overrides
+  --toastify-font-family: var(--font-family);
+}
+
+// Global font — Inter from Google Fonts
+body,
+input,
+button,
+select,
+textarea {
+  font-family: var(--font-family);
+  font-size: var(--bs-body-font-size);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// PrimeVue components inherit font-family from body but hardcode
+// font-size: 1rem in their CSS layer. Unlayered rules override
+// layered rules, so this cleanly sets the font without !important.
+.p-component {
+  font-family: var(--font-family);
+  font-size: var(--bs-body-font-size);
+}
+
+// PrimeVue font-size override — hardcoded to 1rem in PrimeVue CSS templates,
+// cannot be changed via definePreset, so we override here.
+.p-inputtext,
+.p-select-label,
+.p-autocomplete-input,
+.p-password-input,
+.p-inputnumber-input,
+.p-button {
+  font-size: 0.8125rem;
+}
+
+.p-select-list-container {
+  max-height: 400px !important;
+}
+
+.p-password-input {
+  width: 100%;
+}
+
+// Tag font-size — the preset sets 0.75rem via dt('tag.font.size') inside
+// @layer primevue, but the unlayered .p-component rule (0.875rem) overrides it.
+// Repeat here so the unlayered rule wins.
+.p-tag {
+  font-size: 0.75rem;
+}
+
+// PrimeVue form components — full width
+.p-password,
+.p-autocomplete {
+  width: 100%;
+}
+
+// Dark navbar Menubar — white text on dark navy background
+#provisioner .navbar .nav-menu.p-menubar {
+  .p-menubar-root-list {
+    gap: 4px;
+
+    > .p-menubar-item > .p-menubar-item-content {
+      background: transparent;
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.9);
+
+      .p-menubar-item-link {
+        color: rgba(255, 255, 255, 0.9);
+        padding: 0.625rem 0.85rem;
+      }
+
+      .p-menubar-item-label,
+      .p-menubar-item-icon {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .p-menubar-submenu-icon {
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+
+    > .p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover,
+    > .p-menubar-item.p-focus > .p-menubar-item-content,
+    > .p-menubar-item-active > .p-menubar-item-content {
+      background: var(--palette-blue);
+      color: #fff;
+
+      .p-menubar-item-link,
+      .p-menubar-item-label,
+      .p-menubar-item-icon,
+      .p-menubar-submenu-icon {
+        color: #fff;
+      }
     }
   }
-  --yaml-editor-width: 700px;
+
+  .p-menubar-button {
+    color: rgba(255, 255, 255, 0.9);
+  }
 }
+
+// Dropdown submenus — dark background matching navbar
+.p-menubar .p-menubar-submenu {
+  background: var(--navbar-bg);
+  border-color: rgba(255, 255, 255, 0.1);
+
+  .p-menubar-item-content {
+    color: rgba(255, 255, 255, 0.9);
+
+    .p-menubar-item-link {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .p-menubar-item-label,
+    .p-menubar-item-icon {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .p-menubar-submenu-icon {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover,
+  .p-menubar-item.p-focus > .p-menubar-item-content,
+  .p-menubar-item-active > .p-menubar-item-content {
+    background: var(--palette-blue);
+    color: #fff;
+
+    .p-menubar-item-link,
+    .p-menubar-item-label,
+    .p-menubar-item-icon,
+    .p-menubar-submenu-icon {
+      color: #fff;
+    }
+  }
+
+  .p-menubar-separator {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// PrimeVue Drawer global styles
 .p-drawer {
-  width: 50% !important;
   min-width: 720px;
+
+  @media (max-width: 768px) {
+    min-width: unset;
+  }
 }
+
+// PrimeVue global overrides
+.w-full {
+  width: 100%;
+}
+
+.mb-5 {
+  margin-bottom: 1rem;
+}
+
 .modal-mask-with-yaml {
   width: calc(100vw - var(--yaml-editor-width) - 30px) !important;
-  .p-drawer {
-    width: 80% !important;
+  backdrop-filter: blur(2px);
+}
+
+// .markdown-body styles are applied via the .markdown-content selector below
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.markdown-body {
-  h2 {
-    font-size: 1.125rem !important;
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
   }
 }
-// override the PrimeVue's primary color
 
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
 
-.form-control {
+// Performance: Reduced motion for accessibility
+// Exclude Toastify elements — vue3-toastify uses CSS animation-duration
+// on its progress bar to control auto-close timing; overriding it causes
+// toasts to disappear almost instantly.
+@media (prefers-reduced-motion: reduce) {
+  *:not(.Toastify *),
+  *::before:not(.Toastify *),
+  *::after:not(.Toastify *) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .pv-status-view,
+  .pv-doc-view,
+  .pv-pipeline-view,
+  .pv-error-view {
+    animation: none;
+  }
+
+  .tab-pane {
+    animation: none;
+  }
+}
+
+// Loading Spinner
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-icon {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+// Badge styles (used in TaskStatusView expansion)
+.badge {
+  padding: 4px 10px;
   font-size: 0.75rem;
-  padding: 0.325rem 0.45rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+
+  &.bg-primary {
+    background-color: var(--primary-color);
+  }
+
+  &.bg-success {
+    background-color: var(--success-color);
+  }
+
+  &.bg-danger {
+    background-color: var(--danger-color);
+  }
+
+  &.bg-warning {
+    background-color: var(--warning-color);
+    color: #000;
+  }
+
+  &.bg-secondary {
+    background-color: var(--secondary-color);
+  }
+
+  &.bg-dark {
+    background-color: var(--secondary-dark);
+  }
+
+  &.bg-info {
+    background-color: var(--info-color);
+  }
+}
+
+// Tab Panes
+.tab-pane {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+// TaskStatusView expand row content styles (rendered via h() without scoped attributes)
+#tasks-status {
+  .card-body {
+    overflow-y: auto;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+
+    .row {
+      margin: 0;
+      display: flex;
+    }
+    .col-3 {
+      width: 25%;
+      padding-right: 16px;
+    }
+    .col-9 {
+      width: 75%;
+    }
+  }
+
+  .pipeline-task-name {
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    background-color: var(--palette-light);
+    // default + hover
+    &:hover {
+      background: var(--palette-medium);
+    }
+
+    // active (self selected) — solid blue background
+    &.active {
+      background-color: var(--primary-color);
+      color: var(--primary-light);
+      .is-loading {
+        i, span {
+          color: var(--primary-light);
+        }
+      }
+      &:hover {
+        background-color: var(--primary-hover);
+      }
+    }
+
+    // child-active — left accent border + light tint (not full blue)
+    &.child-active {
+      background-color: var(--palette-light);
+      border-left: 3px solid var(--primary-color);
+      &:hover {
+        background-color: var(--palette-medium);
+      }
+    }
+  }
+
+  .pipeline-task-step {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px 8px 32px;
+    font-size: 0.875rem;
+    margin: 1px 0;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    .open-log-btn {
+      background: var(--primary-light);
+      border: 0;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        color: var(--primary-light);
+        background: var(--primary-hover);
+      }
+    }
+
+    .p-tag {
+      margin-right: 10px;
+      background: var(--primary-color);
+      color: var(--primary-light);
+    }
+
+    // default + hover
+    &:hover {
+      background: var(--palette-lighter);
+    }
+
+    // active — solid blue, the visually prominent element
+    &.active {
+      background: var(--primary-color);
+      color: var(--primary-light);
+      padding-left: 30px;
+
+      &:hover {
+        background: var(--primary-hover);
+      }
+
+      .open-log-btn {
+        color: var(--primary-light);
+        background: transparent;
+        &:hover {
+          background: rgba(255, 255, 255, 0.2);
+          color: var(--primary-light);
+        }
+      }
+      .p-tag {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+      }
+    }
+  }
+
+  .task-list {
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+
+  .tab-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    position: relative;
+
+    pre {
+      max-height: 680px;
+      min-height: 400px;
+      max-width: 70vw;
+      min-width: calc(1440px - 410px);
+
+      code {
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    }
+
+    .is-loading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      background: var(--bg-secondary);
+      z-index: 9;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-radius: var(--radius-sm);
+      gap: 12px;
+
+      i {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+      }
+
+      span {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+    }
+
+    .log-truncated-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      background: var(--warning-light);
+      border-left: 3px solid var(--warning-color);
+      border-radius: var(--radius-sm);
+      color: var(--warning-dark);
+      font-size: 0.8125rem;
+      font-weight: 500;
+
+      i {
+        color: var(--warning-color);
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .open-log-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--primary-color);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 3px;
+        text-decoration: underline;
+
+        &:hover {
+          color: var(--primary-hover);
+          background: rgba(118, 159, 205, 0.1);
+        }
+      }
+    }
+
+    // VCodeBlock copy button tooltip
+    .v-code-block--button-copy-icon {
+      position: relative;
+
+      &::after {
+        content: "Copy to clipboard";
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 8px;
+        background: var(--palette-navy);
+        color: #fff;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s;
+        margin-bottom: 4px;
+      }
+
+      &:hover::after {
+        opacity: 1;
+      }
+    }
+
+    .code-block-view {
+      display: flex;
+      flex-direction: column;
+      min-height: 320px;
+      margin-bottom: 16px;
+      background: var(--bg-primary);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      border: 1px solid var(--border-color);
+
+      label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.8125rem;
+        flex-shrink: 0;
+      }
+
+      // vue-json-pretty tree viewer
+      .vjs-tree {
+        flex: 1;
+        overflow: auto;
+        max-height: 640px;
+        font-family: var(--font-family-mono);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+.nav-tabs {
+  border-bottom: 1px solid var(--border-color);
+
+  .nav-link {
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 10px 16px;
+
+    &:hover {
+      color: var(--primary-color);
+    }
+
+    &.active {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--primary-color);
+      font-weight: 600;
+      margin-bottom: -1px;
+    }
+  }
+}
+
+// .form-control styles kept only for file input which remains native
+.form-control {
+  font-size: 0.8125rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+
+  &:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(118, 159, 205, 0.25);
+    outline: none;
+  }
+
+  &:disabled {
+    background-color: var(--bg-tertiary);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+// Common Utility Classes
+.card-box {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+
+// Common Code Block Styles
+.code-block {
+  pre {
+    background: #142435 !important;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 16px !important;
+    overflow-x: auto;
+    font-family: var(--font-family-mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+
+    code {
+      background: unset;
+      color: var(--code-text-light);
+      font-family: var(--font-family-mono);
+      font-size: 0.8125rem;
+      text-shadow: unset;
+      padding: 0;
+      border-radius: 0;
+    }
+  }
+}
+
+// Run Confirmation Dialog
+.run-confirm-content {
+  p {
+    margin: 0 0 16px;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+  }
+
+  .run-confirm-details {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid var(--border-color);
+
+    .run-confirm-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+
+      &:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .run-confirm-label {
+        font-weight: 600;
+        color: var(--text-secondary);
+        width: 100px;
+        flex-shrink: 0;
+        font-size: 0.8125rem;
+      }
+
+      .run-confirm-value {
+        font-weight: 600;
+        color: var(--primary-dark);
+        font-size: 0.9375rem;
+
+        .run-confirm-desc {
+          font-weight: 400;
+          font-size: 0.8125rem;
+          color: var(--text-secondary);
+          margin-left: 6px;
+        }
+      }
+    }
+  }
+}
+
+// Common Markdown Content Styles
+.markdown-content,
+.markdown-body {
+  font-family: var(--font-family) !important;
+  font-size: var(--bs-body-font-size) !important;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  p {
+    line-height: 1.6;
+    margin-bottom: 1em;
+    color: var(--text-primary);
+  }
+
+  a {
+    color: var(--primary-color);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  code {
+    background: var(--code-bg-light);
+    color: var(--danger-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-family-mono);
+    font-size: 0.8125rem;
+  }
+
+  pre {
+    background: var(--code-bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    overflow-x: auto;
+    margin: 1em 0;
+
+    code {
+      background: unset;
+      color: var(--code-text-light);
+      font-family: var(--font-family-mono);
+      font-size: 0.8125rem;
+      text-shadow: unset;
+      padding: 0;
+      border-radius: 0;
+    }
+  }
+
+  blockquote {
+    border-left: 3px solid var(--primary-color);
+    padding: 8px 16px;
+    background: var(--primary-light);
+    border-radius: var(--radius-sm);
+    margin: 1em 0;
+    color: var(--text-secondary);
+  }
+
+  ul,
+  ol {
+    margin: 1em 0;
+    padding-left: 2em;
+
+    li {
+      margin-bottom: 0.5em;
+      line-height: 1.6;
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    thead {
+      background: var(--bg-secondary);
+
+      th {
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+      }
+    }
+
+    tbody {
+      tr {
+        td {
+          padding: 10px 14px;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        &:last-child td {
+          border-bottom: none;
+        }
+      }
+    }
+  }
 }

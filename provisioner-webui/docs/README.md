@@ -82,6 +82,17 @@ This file is used to define the additional input options of the pipeline.
 * Real data: `charts/provisioner-config-local/config/pp-*.yaml`
 * Mock data: `provisioner-webui/server/data/pp-*.yaml`
 
+-  [X]  Support for `unreleasedFeature` option property from `3.3.0`.
+      ```yaml
+      - name: "GCP Region"
+        type: string
+        guiType: input
+        reference: "meta.guiEnv.GUI_GCP_REGION"
+        unreleasedFeature: true
+      ```
+   * Note: When `unreleasedFeature: true` is set on an option, the field is hidden only when the pod environment variable `ENABLE_UNRELEASED_FEATURE=true` is configured. Without the environment variable, the UI behaves normally and all fields are visible.
+   * Use case: Mark fields that are still under development so they can be hidden in production while remaining visible in development/staging environments.
+
 -  [X]  Support for `autocomplete` guiType from `3.1.6`.
       ```yaml
       - name: "AutoComplete platform-base version"
@@ -162,7 +173,7 @@ This file is used to define the additional input options of the pipeline.
     ```
     description: "This is a description of the field. <a href='https://www.cloud.com' target='_blank'>Cloud</a>"
     ```
--  [X]  Support for pipeline description, and description support for [vue3-markdown](https://vue-md.netlify.app/) only, see [example](images/description-markdown.png).
+-  [X]  Support for pipeline description, and description support for [markdown-it](https://github.com/markdown-it/markdown-it) only, see [example](images/description-markdown.png).
 
     ```
     description: |

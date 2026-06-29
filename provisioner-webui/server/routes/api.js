@@ -1,7 +1,16 @@
 /*
  * Copyright © 2025. Cloud Software Group, Inc.
- * This file is subject to the license terms contained
- * in the license file that is distributed with this file.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 /**
@@ -18,7 +27,7 @@ const _ = require('lodash');
 
 const utils = require('../utils');
 const k8s = require('../k8s');
-const { handelError } = require('../utils');
+const { handleError } = require('../utils');
 
 const router = new Router({
   prefix: '/cic2/public/v1'
@@ -130,6 +139,32 @@ async function checkAuth(ctx, next) {
     createdByTenant,
     createdByUser
   };
+}
+
+/**
+ * Check Basic Auth or SSO session only (no account-level authorization).
+ * Used for endpoints that are not account-specific (e.g., recipe lookup).
+ */
+async function checkBasicAuthOnly(ctx) {
+  const authorizationHeader = ctx.request.header['authorization'];
+  if (authorizationHeader) {
+    const basicAuth = utils.parseBasicAuthHeader(authorizationHeader);
+    if (!basicAuth) {
+      console.log('[checkBasicAuthOnly] Authorization header is in wrong format');
+      return await return401(ctx);
+    }
+    const authInfo = utils.authenticateUser(basicAuth.name, basicAuth.pass);
+    if (!authInfo) {
+      console.log('[checkBasicAuthOnly] The salted hash value is not right');
+      return await return401(ctx);
+    }
+  } else {
+    const user = getSsoUser(ctx);
+    if (!user) {
+      console.log('[checkBasicAuthOnly] No Authorization header and No sso session');
+      return await return401(ctx);
+    }
+  }
 }
 
 /**
@@ -246,13 +281,42 @@ const createTektonTask = async function(ctx, next, k8sApi, method, apiParams) {
     }
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error creating tekton task');
+    handleError(ctx, e, 'Error creating tekton task');
     await next();
   }
 };
 
 /**
- * Save Payload.
+ * @swagger
+ * /cic2/public/v1/save/{awsAccount}/{awsRegion}/{deployType}:
+ *   post:
+ *     summary: Save deployment payload
+ *     tags: [payload]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *         description: Account ID (e.g., gcp-98372901679)
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *         description: Provisioner cluster region (e.g., us-west-2)
+ *       - in: path
+ *         name: deployType
+ *         required: true
+ *         schema: { type: string }
+ *         description: Deployment type identifier
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       201: { description: Saved, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden — no access to account }
  */
 router.post('/save/:awsAccount/:awsRegion/:deployType', async (ctx, next) => {
   const deployType = ctx.params.deployType;
@@ -260,50 +324,202 @@ router.post('/save/:awsAccount/:awsRegion/:deployType', async (ctx, next) => {
 });
 
 /**
- * Prepare Account.
+ * @swagger
+ * /cic2/public/v1/prepare/{awsAccount}/{awsRegion}:
+ *   post:
+ *     summary: Prepare account for provisioning
+ *     tags: [cluster]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       201: { description: Created, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
  */
 router.post('/prepare/:awsAccount/:awsRegion', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.prepareAccount, 'post');
 });
 
 /**
- * Run Pipeline.
+ * @swagger
+ * /cic2/public/v1/pipelinerun/{awsAccount}/{awsRegion}:
+ *   post:
+ *     summary: Trigger a pipeline run
+ *     description: Submit a recipe to start a new pipeline run. The recipe JSON is passed in the request body under the "content" field.
+ *     tags: [pipeline]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *         description: Account ID (e.g., gcp-98372901679)
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *         description: Provisioner cluster region (e.g., us-west-2)
+ *       - in: query
+ *         name: pipeline
+ *         schema: { type: string }
+ *         description: Pipeline type (e.g., generic-runner, helm-install)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               aws: { type: object, properties: { account: { type: string }, region: { type: string }, pipeline: { type: string } } }
+ *               content: { type: object, description: Full recipe JSON }
+ *     responses:
+ *       201: { description: Pipeline triggered, content: { application/json: { schema: { type: object, properties: { name: { type: string, description: Pipeline run name for monitoring } } } } } }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  */
 router.post('/pipelinerun/:awsAccount/:awsRegion', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.runPipeline, 'post');
 });
 
 /**
- * Create AWS eks.
- * The 'eks' is the name Amazon Managed Kubernetes Service, so no need to add /aws in a path
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/tasks:
+ *   post:
+ *     summary: Create EKS cluster
+ *     tags: [cluster]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       201: { description: Created, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
  */
 router.post('/eks/:awsAccount/:awsRegion/tasks', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.eksCreate, 'post');
 });
 
 /**
- * Teardown AWS eks
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}:
+ *   delete:
+ *     summary: Teardown EKS cluster
+ *     tags: [cluster]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       202: { description: Accepted, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
  */
 router.delete('/eks/:awsAccount/:awsRegion', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.eksTeardown, 'delete');
 });
 
 /**
- * Update charts.
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/charts/tasks:
+ *   post:
+ *     summary: Update Helm charts
+ *     tags: [chart]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       201: { description: Created, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
  */
 router.post('/eks/:awsAccount/:awsRegion/charts/tasks', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.chartsUpdate, 'post');
 });
 
 /**
- * Delete charts.
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/charts:
+ *   delete:
+ *     summary: Delete Helm charts
+ *     tags: [chart]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       202: { description: Accepted, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
  */
 router.delete('/eks/:awsAccount/:awsRegion/charts', async (ctx, next) => {
   await createTektonTask(ctx, next, k8s.chartsDelete, 'delete');
 });
 
 /**
- * Get tasks status
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/pipelineruns:
+ *   get:
+ *     summary: List pipeline run names
+ *     description: Returns an array of pipeline run name strings for the given account, sorted by creation time (newest first).
+ *     tags: [pipeline]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *         description: Account ID (e.g., gcp-98372901679)
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Array of pipeline run names
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { type: string }
+ *               example: ["generic-runner-gcp-98372901679-1778095829634"]
+ *       401: { description: Unauthorized }
  */
 router.get([
   '/eks/:awsAccount/:awsRegion/tasks',
@@ -324,13 +540,35 @@ router.get([
     ctx.body = names;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getting tasks status');
+    handleError(ctx, e, 'Error getting tasks status');
     await next();
   }
 });
 
 /**
- * Get task status
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/pipelineruns/{pipelineRunId}:
+ *   get:
+ *     summary: Get pipeline run status
+ *     description: Returns the Tekton PipelineRun status (conditions, timestamps). Check .conditions for completion status.
+ *     tags: [pipeline]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: pipelineRunId
+ *         required: true
+ *         schema: { type: string }
+ *         description: Pipeline run name
+ *     responses:
+ *       200: { description: Pipeline run status object, content: { application/json: { schema: { type: object } } } }
+ *       401: { description: Unauthorized }
  */
 router.get([
   '/eks/:awsAccount/:awsRegion/tasks/:pipelineRunId',
@@ -347,11 +585,63 @@ router.get([
     ctx.body = status;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getting task status');
+    handleError(ctx, e, 'Error getting task status');
     await next();
   }
 });
 
+/**
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/pipelineruns/{pipelineRunId}/cancel:
+ *   post:
+ *     summary: Cancel a running pipeline
+ *     tags: [pipeline]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: pipelineRunId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Cancelled, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+ *       401: { description: Unauthorized }
+ */
+router.post('/eks/:awsAccount/:awsRegion/pipelineruns/:pipelineRunId/cancel', async (ctx, next) => {
+  ctx.request.body = ctx.request.body || {};
+  const pipelineRunId = ctx.params.pipelineRunId;
+  await createTektonTask(ctx, next, k8s.stopPipelineRun, null, { pipelineRunId });
+});
+
+/**
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/taskruns/{taskRunId}:
+ *   get:
+ *     summary: Get task run status
+ *     tags: [pipeline]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: taskRunId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Task run status, content: { application/json: { schema: { type: object } } } }
+ *       401: { description: Unauthorized }
+ */
 router.get('/eks/:awsAccount/:awsRegion/taskruns/:taskRunId', async (ctx, next) => {
   try {
     const taskRunId = ctx.params.taskRunId;
@@ -364,13 +654,35 @@ router.get('/eks/:awsAccount/:awsRegion/taskruns/:taskRunId', async (ctx, next) 
     ctx.body = status;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getting taskruns');
+    handleError(ctx, e, 'Error getting taskruns');
     await next();
   }
 });
 
 /**
- * Load payload
+ * @swagger
+ * /cic2/public/v1/load/{awsAccount}/{awsRegion}/{deployType}:
+ *   get:
+ *     summary: Load saved deployment payload
+ *     description: Reads a previously saved recipe payload from a Kubernetes ConfigMap.
+ *     tags: [payload]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: deployType
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Parsed recipe YAML as JSON, content: { application/json: { schema: { type: object } } } }
+ *       404: { description: Payload not found }
+ *       401: { description: Unauthorized }
  */
 router.get('/load/:awsAccount/:awsRegion/:deployType', async (ctx, next) => {
   try {
@@ -388,21 +700,61 @@ router.get('/load/:awsAccount/:awsRegion/:deployType', async (ctx, next) => {
         ctx.status = 200;
         ctx.body = payload;
       } catch (e) {
-        handelError(ctx, e, 'The payload could not be loaded.');
+        handleError(ctx, e, 'The payload could not be loaded.');
       }
     } else {
       ctx.status = 404;
-      handelError(ctx, null, 'The payload was not found.');
+      handleError(ctx, null, 'The payload was not found.');
     }
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error loading payload');
+    handleError(ctx, e, 'Error loading payload');
     await next();
   }
 });
 
 /**
- * Get pod container log
+ * @swagger
+ * /cic2/public/v1/eks/{awsAccount}/{awsRegion}/pod/{pod}/{container}/log:
+ *   get:
+ *     summary: Get pod container log
+ *     description: Returns container log output. Supports tail, follow, and regex filtering.
+ *     tags: [log]
+ *     parameters:
+ *       - in: path
+ *         name: awsAccount
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: awsRegion
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: pod
+ *         required: true
+ *         schema: { type: string }
+ *         description: Pod name (e.g., generic-runner-gcp-98372901679-xxx-generic-runner-pod)
+ *       - in: path
+ *         name: container
+ *         required: true
+ *         schema: { type: string }
+ *         description: Container name (e.g., step-generic-runner)
+ *       - in: query
+ *         name: follow
+ *         schema: { type: boolean }
+ *         description: Stream logs in real-time
+ *       - in: query
+ *         name: tailLines
+ *         schema: { type: integer }
+ *         description: Return only the last N lines
+ *       - in: query
+ *         name: filterRegex
+ *         schema: { type: string }
+ *         description: URL-encoded regex to filter log lines
+ *     responses:
+ *       200: { description: Log output as plain text, content: { text/plain: { schema: { type: string } } } }
+ *       400: { description: Invalid filterRegex }
+ *       401: { description: Unauthorized }
  */
 router.get('/eks/:awsAccount/:awsRegion/pod/:pod/:container/log', async (ctx, next) => {
   try {
@@ -410,12 +762,14 @@ router.get('/eks/:awsAccount/:awsRegion/pod/:pod/:container/log', async (ctx, ne
     const awsAccount = ctx.params.awsAccount;
     const pod = ctx.params.pod;
     const container = ctx.params.container;
+    const follow = ctx.query?.follow?.toLowerCase() === 'true';
+    const tailLines = ctx.query?.tailLines ? parseInt(ctx.query.tailLines, 10) : undefined;
     const param = {
       awsAccount,
       pod,
       container
     };
-    const result = await k8s.getContainerLog(param);
+    const result = await k8s.getContainerLog(param, follow, tailLines);
     ctx.status = 200;
     // for PDP-2079: return log match filterRegex
     // e.g. filterRegex: ^(?!###).$*
@@ -423,18 +777,87 @@ router.get('/eks/:awsAccount/:awsRegion/pod/:pod/:container/log', async (ctx, ne
     const filterRegex = ctx.query.filterRegex;
     let regResult = "";
     if (filterRegex) {
-      const regContents = result.match(new RegExp(filterRegex, "gm"));
-      if (regContents && regContents.length > 0) {
-        regResult = regContents.join("\n");
+      try {
+        const re = new RegExp(filterRegex, "gm");
+        const regContents = result.match(re);
+        if (regContents && regContents.length > 0) {
+          regResult = regContents.join("\n");
+        }
+      } catch (regexErr) {
+        ctx.status = 400;
+        ctx.body = `Invalid filterRegex: ${regexErr.message}`;
+        return await next();
       }
     }
     ctx.body = regResult || result;
     await next();
   } catch(e) {
-    handelError(ctx, e, 'Error getting pod container log');
+    handleError(ctx, e, 'Error getting pod container log');
     await next();
   }
 });
 
+
+/**
+ * @swagger
+ * /cic2/public/v1/recipe:
+ *   get:
+ *     summary: Get recipe template by title
+ *     description: Returns the full recipe configuration (UI form metadata + recipe YAML) for a given recipe title. The "recipe" field contains the complete pipeline recipe as a YAML string.
+ *     tags: [recipe]
+ *     parameters:
+ *       - in: query
+ *         name: title
+ *         required: true
+ *         schema: { type: string }
+ *         description: Recipe title from the URL query parameter (e.g., deploy-tp-on-prem-gcp-k3s)
+ *       - in: query
+ *         name: pipeline
+ *         schema: { type: string }
+ *         description: Pipeline type to narrow the lookup (e.g., generic-runner)
+ *     responses:
+ *       200:
+ *         description: Recipe configuration with embedded recipe YAML
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 pipelineName: { type: string }
+ *                 description: { type: string }
+ *                 groups: { type: array, items: { type: object } }
+ *                 options: { type: array, items: { type: object } }
+ *                 recipe: { type: string, description: Full pipeline recipe as YAML string }
+ *       400: { description: Missing title parameter }
+ *       404: { description: Recipe not found }
+ *       401: { description: Unauthorized }
+ */
+router.get('/recipe', async (ctx, next) => {
+  try {
+    await checkBasicAuthOnly(ctx);
+
+    const title = ctx.query.title;
+    if (!title) {
+      ctx.status = 400;
+      ctx.body = { error: 'Missing required query parameter: title' };
+      return await next();
+    }
+
+    const pipeline = ctx.query.pipeline || null;
+    const result = configMap.getRecipeByTitle(title, pipeline);
+    if (result.error) {
+      ctx.status = result.reason === 'no-menu' ? 500 : 404;
+      ctx.body = { error: result.error };
+      return await next();
+    }
+
+    ctx.status = 200;
+    ctx.body = result.recipe;
+    await next();
+  } catch(e) {
+    handleError(ctx, e, 'Error getting recipe');
+    await next();
+  }
+});
 
 module.exports = router;

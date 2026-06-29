@@ -1,5 +1,22 @@
-Public repository for Platform Provisioner by TIBCO® 
-Copyright 2025 Cloud Software Group, Inc.
+Public repository for Platform Provisioner UI by TIBCO®
+Copyright 2024-2025 Cloud Software Group, Inc.
 
 This product includes software developed at
 Cloud Software Group, Inc. (https://www.cloud.com/).
+
+This product includes the following third-party software:
+
+---
+
+Ace Editor (ace-builds v1.36.2)
+Copyright (c) 2010, Ajax.org B.V.
+License: BSD 3-Clause
+https://github.com/ajaxorg/ace
+
+---
+
+The following transitive dependencies (via Koa) have MIT license text
+in their README but no formal license field in package.json:
+
+- only@0.0.2 — Copyright (c) TJ Holowaychuk (MIT)
+- pause@0.0.1 — Copyright (c) TJ Holowaychuk (MIT)

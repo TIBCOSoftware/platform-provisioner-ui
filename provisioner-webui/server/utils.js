@@ -1,7 +1,16 @@
 /*
  * Copyright © 2025. Cloud Software Group, Inc.
- * This file is subject to the license terms contained
- * in the license file that is distributed with this file.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 'use strict';
@@ -87,7 +96,7 @@ const authenticateUser = function(username, password) {
   return null;
 };
 
-const handelError = function (ctx, e, message) {
+const handleError = function (ctx, e, message) {
   message = message ? message + ", error: " + e.message : e.message;
   console.error(message);
   ctx.status = e.statusCode || 500;
@@ -178,7 +187,7 @@ module.exports = {
   base64Decode: base64Decode,
   delay: delay,
   cleanEmptyProperty: cleanEmptyProperty,
-  handelError: handelError,
+  handleError: handleError,
   parseBasicAuthHeader: parseBasicAuthHeader,
   parseBasicAuth: parseBasicAuth,
   authenticateUser: authenticateUser,

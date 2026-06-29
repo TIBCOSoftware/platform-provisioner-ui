@@ -5,6 +5,14 @@
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
   {{- end }}
 {{- end }}
+{{- else if .Values.httpRoutes }}
+{{- range $key, $rt := .Values.httpRoutes }}
+{{- if and $rt.enabled $rt.spec.hostnames }}
+{{- range $rt.spec.hostnames }}
+  http://{{ . }}/
+{{- end }}
+{{- end }}
+{{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "platform-provisioner-ui.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")

@@ -1,3 +1,109 @@
+## [3.4.0] - 2026-05-20
+### Added
+- Add MCP (Model Context Protocol) server for Claude Code integration
+  - OAuth 2.1 with PKCE authentication, integrated with SAML SSO
+  - 12 MCP tools: whoami, listAccounts, listPipelines, listPipelineRuns, getPipelineRun, createPipelineRun, stopPipelineRun, deletePipelineRun, loadRecipe, saveRecipe, getTaskRunDetails, getContainerLog
+  - Per-user `created-by` K8s labels via JWT email identity
+  - Token lifecycle: access token 8h (auto-refresh), refresh token 30d
+  - `listPipelineRuns` defaults to current user's runs with auto-prefixed label selectors
+  - RFC 9728 `resource_metadata` discovery for automatic OAuth flow
+  - On-prem mode support with mock user auto-authorization
+- Add `@modelcontextprotocol/sdk`, `jsonwebtoken`, `zod` dependencies
+- Add `make bump-changelog` target for automated Helm chart version bump and CHANGELOG generation
+### Fixed
+- Fix SAML callbackUrl for MCP OAuth
+### Changed
+- Rename MCP server to `tibco-platform-provisioner`
+- Update README.md and docs/ai/mcp.md with MCP setup and usage instructions
+
+## [3.3.1] - 2026-04-03
+### Fixed
+- [PCP-18597] Fix browser auto-fill on pipeline and welcome page password fields
+  - Replace `autocomplete="off"` with `autocomplete="new-password"` (Chrome ignores `off` on password fields)
+  - Use PrimeVue `inputProps` to pass `autocomplete` to the inner `<input>` element instead of the wrapper div
+### Added
+- Add YAML change tracking with confirmation dialog before pipeline deployment
+  - Show GUI environment changes grouped by pipeline step with friendly field names
+  - Show non-guiEnv YAML changes as color-coded unified diff
+  - Track uploaded file names for display in change summary
+  - Integrate confirmation dialog in both pipeline options and YAML editor views
+  - Add `changeTracker.ts` utility module with comprehensive unit tests
+  - Add `RunConfirmChanges.vue` component for change preview display
+- Add `"diff": "7.0.0"` dependency for unified diff generation
+- Fix markdown styling in docs pages — `.markdown-body` class was not inheriting styles due to invalid LESS `@extend` syntax
+### Fixed
+- Fix invalid LESS `@extend` syntax in `global.less` and `DocsView.vue` — replaced with proper selector grouping
+- Fix outdated `vue3-markdown` reference in docs README — updated to `markdown-it`
+- [PCP-17321] Add unreleased feature flag for pipeline options
+  - Hide pipeline option fields with `unreleasedFeature: true` when pod env var `ENABLE_UNRELEASED_FEATURE=true` is set
+  - Expose `ENABLE_UNRELEASED_FEATURE` via `/cic2-ws/v1/ui-properties` endpoint
+  - Add unit tests for filtering logic and e2e test for field visibility
+
+## [3.3.0] - 2026-03-31
+### Added
+- [PCP-17957] Open-source readiness, security fixes, and UX improvements
+  - Add run confirmation dialog before pipeline execution, showing Account (with description), Region, and Pipeline
+  - Add "Back to Login" button on 403 error page
+  - Replace unlicensed `vue3-markdown` with MIT-licensed `markdown-it` + thin Vue wrapper (`MarkdownView.vue`)
+  - Add comprehensive unit tests for UI components, Pinia stores, and server utilities
+  - Refactor e2e tests with Playwright auth setup project, custom fixtures, and modular helpers
+  - Add CONTRIBUTING.md, SECURITY.md, and improved README.md
+  - Add Apache-2.0 license field to package.json and BSD-3-Clause LICENSE for vendored ace-builds
+  - Fix multi-panel log display — expanding one pipeline row no longer collapses another's log panel
+  - Fix `handelError` typo → `handleError` across server files
+  - Fix Makefile missing `--build-arg GIT_COMMIT` for local Docker builds
+  - Fix `supervisord.conf` cross-env dependency and hardcoded session key
+- [PCP-17954] License headers update for open source publication
+  - Standardize all copyright headers to Apache 2.0 format
+  - Update NOTICE file with third-party attributions
+- [PCP-17920] UI improvements and cache fix
+  - Add environment indicator ([Staging]/[Local]) in navbar and page title
+  - Add striped rows, row hover effect, loading state, and select-all columns to pipeline status table
+  - Fix browser cache issue by adding no-cache header for root path `/`
+### Changed
+- Upgrade "vite" from "5.4.21" to "6.4.1", "vitest" from "2.1.8" to "3.2.4"
+- Upgrade "markdown-it" from "14.1.0" to "14.1.1"
+- Upgrade "@primevue/themes" from "4.3.3" to "4.5.4"
+- Upgrade "helm/chart-testing-action" to v2.8.0
+### Fixed
+- Fixed security vulnerabilities in "flatted" (DoS/prototype-pollution), "picomatch" (ReDoS/method injection)
+- [PCP-18066] Fix selected log step not cleared after clicking Filter on status page; refactor markdown-body to extend markdown-content mixin
+
+## [3.2.0] - 2026-03-13
+### Added
+- [PCP-17794] Add form-based authentication (dual login: SAML + email/password)
+- [PCP-17587] Add streaming log support and improve task list UX
+### Changed
+- [PCP-17787] Migrate passport-saml 3.2.4 to @node-saml/passport-saml 5.1.0
+- [PCP-17446] UI improvements
+  - Restyle UI with Aura preset, custom color palette, and Inter font
+  - Add theme switcher with 4 color palettes
+  - Add version badge and login logo
+  - Pin all dependency versions (remove ^ and ~ prefixes)
+  - Upgrade "koa" to "2.16.4", "dompurify" to "3.3.3", "axios" to "1.13.6"
+  - Upgrade "sass" to "1.98.0", "@playwright/test" to "1.58.2"
+- Bump Helm chart version to 1.0.12
+### Fixed
+- [PCP-17158] Fix menu navigation highlighting and prevent page flash on route change
+- [PCP-17142] Revert eslint from 9.26.0 to 8.57.0 to fix CI build
+
+## [3.1.7] - 2026-02-12
+### Added
+- [PCP-16870] Implement ETag-based content update detection with client polling
+- [PCP-16910] Onboard provisioner-ui project to AI-Assisted SDLC
+- [PCP-17142] Add Account and Region columns to pipeline status table
+  - Add column toggle control to pipeline status table with localStorage persistence
+### Changed
+- [PCP-17031] Reduce vertical space waste in pipeline form and stepper sidebar
+- Clean up UI spacing, editor font, dropdown menus, and Makefile targets
+- Modernize provisioner-webui interface with UI/UX improvements
+- Upgrade "eslint" from "8.57.0" to "9.26.0"
+- Upgrade "lodash, @types/lodash" from "4.17.21" to "4.17.23"
+- Add "shx": "0.4.0" for cross-platform shell commands in npm scripts
+### Fixed
+- Fixed build scripts (`build`, `build:server`) failing in Windows PowerShell/CMD by replacing Unix commands with `shx`
+- [PCP-16360] Fixed inject user email from LDAP to the recipe in provisioner SaaS
+
 ## [3.1.6] - 2025-11-25
 ### Added
 - Support for config Helm Charts Url in landing page
